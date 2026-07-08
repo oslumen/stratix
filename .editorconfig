@@ -1,0 +1,20 @@
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+charset = utf-8
+
+[*.{py,rst,md,toml,yaml,yml}]
+indent_style = space
+indent_size = 4
+
+[Makefile,justfile]
+indent_style = tab
+
+[{*.json,.github/workflows/*.yml,.github/workflows/*.yaml}]
+indent_size = 2
+
+[*.{svg,html,css,js}]
+indent_size = 2

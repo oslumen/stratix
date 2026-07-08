@@ -1,0 +1,83 @@
+
+[build-system]
+requires = ["setuptools>=68.0", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stratix"
+dynamic = ["version"]
+description = "Stratified Media Electromagnetic Solver"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "GPL-3.0-only"
+authors = [{name = "Oslumen Community", email = "contact@oslumen.org"}]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Utilities",
+]
+dependencies = [
+  "numpy>=2",
+  "scipy>=1.10",
+  "loguru>=0.7",
+]
+
+[project.urls]
+Homepage = "https://github.com/oslumen/stratix"
+Repository = "https://github.com/oslumen/stratix"
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "ruff", "mypy", "pre-commit"]
+docs = [
+  "sphinx>=7.4",
+  "shibuya",
+  "myst-parser>=4.0",
+  "sphinx-autodoc-typehints>=2.3",
+  "sphinx-copybutton>=0.5",
+  "sphinx-design>=0.7",
+  "sphinxcontrib-mermaid>=2.0",
+  "numpydoc>=1.10",
+  "sphinx-autobuild>=202.14",
+  "sphinx-sitemap",
+  "sphinx-gallery",
+  "matplotlib",
+  "memory-profiler",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+write_to = "src/stratix/_version.py"
+fallback_version = "0.1.0"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+known-first-party = ["stratix"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["scipy.*", "loguru"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-v", "--cov=stratix", "--cov-report=term-missing"]

@@ -1,0 +1,39 @@
+
+{% set name = "stratix" %}
+{% set version = environ.get("GIT_DESCRIBE_TAG", "0.0.0") %}
+
+package:
+  name: {{ name | lower }}
+  version: {{ version }}
+
+source:
+  # TODO: replace with PyPI source URL and sha256 when publishing to conda-forge
+  git_url: https://github.com/oslumen/stratix
+  # git_rev: v{{ version }}
+
+build:
+  noarch: python
+  number: 0
+  script: {{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - python >=3.11
+    - pip
+    - setuptools
+    - setuptools-scm
+  run:
+    - python >=3.11
+    - numpy >=2
+    - scipy >=1.10
+    - loguru >=0.7
+
+test:
+  imports:
+    - stratix
+
+about:
+  home: https://github.com/oslumen/stratix
+  license: GPL-3.0-only
+  summary: "Stratified Media Electromagnetic Solver"
+

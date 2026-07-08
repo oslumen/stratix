@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it."
+authors:
+  - family-names: "Community"
+    given-names: "Oslumen"
+    email: "contact@oslumen.org"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+title: "stratix"
+version: "0.1.0"
+doi: "10.5281/zenodo.XXXXXXX"
+date-released: "2026"
+url: "https://github.com/oslumen/stratix"
+license: "GPL-3.0-only"
+keywords:
+  - scientific-computing
+  - python
