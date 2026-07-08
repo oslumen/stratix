@@ -40,7 +40,7 @@ docs = [
   "sphinx-autodoc-typehints>=2.3",
   "sphinx-copybutton>=0.5",
   "sphinx-design>=0.7",
-  "sphinxcontrib-mermaid>=2.0",
+  "sphinxcontrib-mermaid>=2.0.3",
   "numpydoc>=1.10",
   "sphinx-autobuild>=202.14",
   "sphinx-sitemap",
