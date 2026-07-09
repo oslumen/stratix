@@ -51,7 +51,7 @@ Users construct a `phokaia.Stack` (superstrate material, ordered layers with thi
 - All array operations use `numdiff` (`nd.linalg.solve`, `nd.linalg.inv`, matrix multiplication). No direct `numpy`, `scipy`, `jax`, or `torch` imports in stratix source.
 - `nd.jit` wrapper available for JIT-compiling the core solve loop.
 - `nd.grad` available for autodiff through the S-matrix assembly.
-- Tests use numpy backend only.
+- Tests run across all available numdiff backends. Autodiff tests skip numpy backend (no grad support).
 
 ### Module structure
 
@@ -72,7 +72,7 @@ stratix/
 
 ### Test principles
 
-Tests validate external behavior only — never internal method implementation. Reference values come from analytic formulas (single-interface Fresnel, thin-film formulas) and from the established `tmm` library (sbyrnes321/tmm). Test backend is always numpy.
+Tests validate external behavior only — never internal method implementation. Reference values come from analytic formulas (single-interface Fresnel, thin-film formulas) and from the established `tmm` library (sbyrnes321/tmm). Tests run across all available numdiff backends. Reference values validated against numpy backend; other backends validated for consistency. Autodiff tests skip numpy backend (no grad support).
 
 ### Seams
 

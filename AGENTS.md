@@ -25,4 +25,4 @@ Single-context: one `CONTEXT.md` + `docs/adr/` at repo root. See `docs/agents/do
 - Time convention: `exp(-iωt)` (documented, not enforced).
 - Layer ordering: superstrate → substrate (top-to-bottom).
 - All public types are Pydantic models.
-- Tests use numpy backend only.
+- Tests run across all available numdiff backends. Autodiff tests skip numpy backend (no grad support).

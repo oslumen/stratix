@@ -30,6 +30,7 @@ coverage.xml
 .idea/
 *.swp
 *.swo
+.kilo/
 
 # OS
 .DS_Store
@@ -41,3 +42,4 @@ docs/_build/
 
 # Notebooks
 .ipynb_checkpoints/
+

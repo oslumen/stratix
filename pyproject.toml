@@ -22,10 +22,13 @@ classifiers = [
   "Topic :: Utilities",
 ]
 dependencies = [
-  "numpy>=2",
-  "scipy>=1.10",
   "loguru>=0.7",
+  "phokaia",
 ]
+
+
+[tool.uv.sources]
+phokaia = { path = "../phokaia", editable = true }
 
 [project.urls]
 Homepage = "https://github.com/oslumen/stratix"
