@@ -1,9 +1,10 @@
-"""Tests for single-interface S-matrix (Issue #16)."""
+"""Tests for single-interface S-matrix (Issue #16) and multi-layer (Issue #17)."""
 
 from __future__ import annotations
 
 import numdiff as nd
 import pytest
+from phokaia import Layer
 from phokaia import Material
 from phokaia import Stack
 
@@ -211,3 +212,175 @@ class TestSingleInterfaceTE:
 
         assert abs(R - 1.0) < 1e-12
         assert abs(T) < 1e-12
+
+
+class TestMultiLayerTE:
+    def test_quarter_wave_ar_coating(self, set_backend):
+        """Single-layer quarter-wave AR coating: R → 0 at design λ.
+
+        n0=1.0, n1=1.38 (MgF2), n2=1.5 (glass).
+        d1 = λ/(4*n1) gives destructive interference at normal incidence.
+        """
+        n_air, n_mgf2, n_glass = 1.0, 1.38, 1.5
+        wavelength = 5e-7
+        d_ar = wavelength / (4 * n_mgf2)
+
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_glass**2),
+            layers=[Layer(thickness=d_ar, material=Material(epsilon=n_mgf2**2))],
+        )
+
+        result = stratix.solve(
+            stack,
+            wavelength,
+            kx=0.0,
+            polarization=Polarization.TE,
+        )
+
+        R = float(result.R[0])
+        T = float(result.T[0])
+
+        # Ideal AR coating: R = ((n0*n2 - n1^2)/(n0*n2 + n1^2))^2
+        expected_R = ((n_air * n_glass - n_mgf2**2) / (n_air * n_glass + n_mgf2**2)) ** 2
+        assert abs(R - expected_R) < 1e-12, f"R={R}, expected={expected_R}"
+        assert abs(R + T - 1.0) < 1e-12
+
+    def test_single_layer_off_normal(self, set_backend):
+        """Single-layer stack matches analytic Fabry-Pérot formula."""
+        n_air, n_film, n_sub = 1.0, 1.38, 1.5
+        wavelength = 5e-7
+        d = wavelength / (4 * n_film)  # non-quarter-wave off-normal
+
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_sub**2),
+            layers=[Layer(thickness=d, material=Material(epsilon=n_film**2))],
+        )
+
+        theta_deg = 30.0
+        theta_rad_arr = nd.array(nd.pi * theta_deg / 180)
+        k0 = 2 * nd.pi / wavelength
+        kx = float(n_air * k0 * nd.sin(theta_rad_arr))
+
+        result = stratix.solve(
+            stack,
+            wavelength,
+            kx=kx,
+            polarization=Polarization.TE,
+        )
+
+        R = float(result.R[0])
+        T = float(result.T[0])
+        assert abs(R + T - 1.0) < 1e-12
+
+    def test_two_layer_stack(self, set_backend):
+        """Two-layer stack: R+T=1 for lossless dielectrics."""
+        n_air, n_a, n_b, n_sub = 1.0, 1.38, 2.0, 1.5
+        wavelength = 5e-7
+        d_a = wavelength / (4 * n_a)
+        d_b = wavelength / (4 * n_b)
+
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_sub**2),
+            layers=[
+                Layer(thickness=d_a, material=Material(epsilon=n_a**2)),
+                Layer(thickness=d_b, material=Material(epsilon=n_b**2)),
+            ],
+        )
+
+        result = stratix.solve(
+            stack,
+            wavelength,
+            kx=0.0,
+            polarization=Polarization.TE,
+        )
+
+        R = float(result.R[0])
+        T = float(result.T[0])
+        assert abs(R + T - 1.0) < 1e-12
+
+    def test_bragg_mirror_convergence(self, set_backend):
+        """Bragg mirror: R → 1.0 with increasing layer pairs."""
+        n_low, n_high = 1.38, 2.3
+        wavelength = 5e-7
+        d_low = wavelength / (4 * n_low)
+        d_high = wavelength / (4 * n_high)
+
+        n_air, n_sub = 1.0, 1.5
+
+        R_values = []
+        for N in [1, 2, 4, 8]:
+            layers = []
+            for _ in range(N):
+                layers.append(Layer(thickness=d_high, material=Material(epsilon=n_high**2)))
+                layers.append(Layer(thickness=d_low, material=Material(epsilon=n_low**2)))
+            stack = Stack(
+                superstrate=Material(epsilon=n_air**2),
+                substrate=Material(epsilon=n_sub**2),
+                layers=layers,
+            )
+            result = stratix.solve(
+                stack,
+                wavelength,
+                kx=0.0,
+                polarization=Polarization.TE,
+            )
+            R_values.append(float(result.R[0]))
+
+        # Reflectance should increase monotonically with layer count
+        for i in range(len(R_values) - 1):
+            assert R_values[i + 1] > R_values[i], (
+                f"R not monotonic: {R_values}"
+            )
+        # 8-pair Bragg mirror should have R > 0.99
+        assert R_values[-1] > 0.99, f"R={R_values[-1]} for 8-pair mirror"
+
+    def test_zero_layer_stack(self, set_backend):
+        """Stack with no layers = single-interface behavior."""
+        n_air, n_glass = 1.0, 1.5
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_glass**2),
+        )
+        wavelength = 5e-7
+        result = stratix.solve(
+            stack,
+            wavelength,
+            kx=0.0,
+            polarization=Polarization.TE,
+        )
+
+        expected_R = _analytical_R_TE(n_air, n_glass)
+        R = float(result.R[0])
+        T = float(result.T[0])
+
+        assert abs(R - expected_R) < 1e-12
+        assert abs(R + T - 1.0) < 1e-12
+
+    def test_multilayer_R_plus_T_equals_one(self, set_backend):
+        """Energy conservation for lossless dielectric multilayers."""
+        n_air, n_a, n_b, n_sub = 1.0, 1.38, 2.0, 1.5
+        wavelength = 5e-7
+
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_sub**2),
+            layers=[
+                Layer(thickness=100e-9, material=Material(epsilon=n_a**2)),
+                Layer(thickness=200e-9, material=Material(epsilon=n_b**2)),
+                Layer(thickness=50e-9, material=Material(epsilon=n_a**2)),
+            ],
+        )
+
+        for kx in [0.0, 5e6, 1e7]:
+            result = stratix.solve(
+                stack,
+                wavelength,
+                kx=kx,
+                polarization=Polarization.TE,
+            )
+            R = float(result.R[0])
+            T = float(result.T[0])
+            assert abs(R + T - 1.0) < 1e-12, f"R+T={R+T} at kx={kx}"

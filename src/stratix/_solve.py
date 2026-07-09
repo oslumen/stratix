@@ -8,7 +8,7 @@ from phokaia import Stack
 from ._result import Result
 from ._types import Method
 from ._types import Polarization
-from .methods._smatrix import _single_interface_smatrix
+from .methods._smatrix import _smatrix_solve
 
 
 def solve(
@@ -45,12 +45,7 @@ def solve(
             "Only TE polarization is currently supported"
         )
 
-    if stack.layers:
-        raise NotImplementedError(
-            "Multi-layer stacks not yet implemented"
-        )
-
-    R, T = _single_interface_smatrix(stack, wavelength, kx, polarization)
+    R, T = _smatrix_solve(stack, wavelength, kx, polarization)
 
     return Result(
         R=nd.array([float(R)]),
