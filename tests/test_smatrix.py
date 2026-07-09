@@ -18,7 +18,7 @@ def _analytical_R_TE(n_inc: complex, n_sub: complex) -> float:
     return float(abs(r) ** 2)
 
 
-@pytest.fixture(params=["numpy", "jax", "torch"])
+@pytest.fixture(params=["numpy", "jax", "torch", "autograd"])
 def set_backend(request):
     backend = request.param
     if not getattr(nd, f"HAS_{backend.upper()}", False):
