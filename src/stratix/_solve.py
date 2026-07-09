@@ -8,6 +8,7 @@ from phokaia import Stack
 from ._result import Result
 from ._types import Method
 from ._types import Polarization
+from .methods._abeles import _abeles_solve
 from .methods._smatrix import _smatrix_solve
 
 
@@ -36,10 +37,12 @@ def solve(
     """
     resolved = Method.SMATRIX if method == Method.AUTO else method
 
-    if resolved != Method.SMATRIX:
+    if resolved == Method.SMATRIX:
+        R, T = _smatrix_solve(stack, wavelength, kx, polarization)
+    elif resolved == Method.ABELES:
+        R, T = _abeles_solve(stack, wavelength, kx, polarization)
+    else:
         raise NotImplementedError(f"Method {resolved.value!r} not yet implemented")
-
-    R, T = _smatrix_solve(stack, wavelength, kx, polarization)
 
     return Result(
         R=nd.array([float(R)]),
