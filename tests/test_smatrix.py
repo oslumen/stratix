@@ -28,9 +28,11 @@ def set_backend(request):
     nd.set_backend(backend)
     if backend == "torch":
         import torch
+
         torch.set_default_dtype(torch.float64)
     if backend == "jax":
         import jax
+
         jax.config.update("jax_enable_x64", True)
     yield backend
     nd.set_backend(old)
@@ -121,7 +123,7 @@ class TestSingleInterfaceTE:
             )
             R = float(result.R[0])
             T = float(result.T[0])
-            assert abs(R + T - 1.0) < 1e-12, f"R+T={R+T} at kx={kx}"
+            assert abs(R + T - 1.0) < 1e-12, f"R+T={R + T} at kx={kx}"
 
     def test_method_auto_resolves_to_smatrix(self, set_backend):
         """Method.AUTO → Method.SMATRIX."""
@@ -242,7 +244,9 @@ class TestMultiLayerTE:
         T = float(result.T[0])
 
         # Ideal AR coating: R = ((n0*n2 - n1^2)/(n0*n2 + n1^2))^2
-        expected_R = ((n_air * n_glass - n_mgf2**2) / (n_air * n_glass + n_mgf2**2)) ** 2
+        expected_R = (
+            (n_air * n_glass - n_mgf2**2) / (n_air * n_glass + n_mgf2**2)
+        ) ** 2
         assert abs(R - expected_R) < 1e-12, f"R={R}, expected={expected_R}"
         assert abs(R + T - 1.0) < 1e-12
 
@@ -314,8 +318,12 @@ class TestMultiLayerTE:
         for N in [1, 2, 4, 8]:
             layers = []
             for _ in range(N):
-                layers.append(Layer(thickness=d_high, material=Material(epsilon=n_high**2)))
-                layers.append(Layer(thickness=d_low, material=Material(epsilon=n_low**2)))
+                layers.append(
+                    Layer(thickness=d_high, material=Material(epsilon=n_high**2))
+                )
+                layers.append(
+                    Layer(thickness=d_low, material=Material(epsilon=n_low**2))
+                )
             stack = Stack(
                 superstrate=Material(epsilon=n_air**2),
                 substrate=Material(epsilon=n_sub**2),
@@ -331,9 +339,7 @@ class TestMultiLayerTE:
 
         # Reflectance should increase monotonically with layer count
         for i in range(len(R_values) - 1):
-            assert R_values[i + 1] > R_values[i], (
-                f"R not monotonic: {R_values}"
-            )
+            assert R_values[i + 1] > R_values[i], f"R not monotonic: {R_values}"
         # 8-pair Bragg mirror should have R > 0.99
         assert R_values[-1] > 0.99, f"R={R_values[-1]} for 8-pair mirror"
 
@@ -383,4 +389,273 @@ class TestMultiLayerTE:
             )
             R = float(result.R[0])
             T = float(result.T[0])
-            assert abs(R + T - 1.0) < 1e-12, f"R+T={R+T} at kx={kx}"
+            assert abs(R + T - 1.0) < 1e-12, f"R+T={R + T} at kx={kx}"
+
+
+class TestSingleInterfaceTM:
+    def test_normal_incidence_matches_TE(self, set_backend):
+        """TM R = TE R at normal incidence (kx=0)."""
+        n_air, n_glass = 1.0, 1.5
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_glass**2),
+        )
+        wavelength = 5e-7
+
+        result_TE = stratix.solve(
+            stack, wavelength, kx=0.0, polarization=Polarization.TE
+        )
+        result_TM = stratix.solve(
+            stack, wavelength, kx=0.0, polarization=Polarization.TM
+        )
+
+        assert abs(float(result_TE.R[0]) - float(result_TM.R[0])) < 1e-12
+        assert abs(float(result_TE.T[0]) - float(result_TM.T[0])) < 1e-12
+
+    def test_off_normal_differs_from_TE(self, set_backend):
+        """TM R differs from TE R at off-normal incidence."""
+        n_air, n_glass = 1.0, 1.5
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_glass**2),
+        )
+        wavelength = 5e-7
+        theta_deg = 45.0
+        theta_rad = nd.array(nd.pi * theta_deg / 180)
+        k0 = 2 * nd.pi / wavelength
+        kx = float(n_air * k0 * nd.sin(theta_rad))
+
+        result_TE = stratix.solve(
+            stack, wavelength, kx=kx, polarization=Polarization.TE
+        )
+        result_TM = stratix.solve(
+            stack, wavelength, kx=kx, polarization=Polarization.TM
+        )
+
+        R_TE = float(result_TE.R[0])
+        R_TM = float(result_TM.R[0])
+        assert abs(R_TM - R_TE) > 1e-6, (
+            f"TM and TE should differ off-normal, got R_TE={R_TE}, R_TM={R_TM}"
+        )
+
+    def test_brewster_angle(self, set_backend):
+        """TM R → 0 at Brewster angle θ_B = atan(n₂/n₁)."""
+        n_air, n_glass = 1.0, 1.5
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_glass**2),
+        )
+        wavelength = 5e-7
+        k0 = 2 * nd.pi / wavelength
+        theta_B = float(nd.arctan(nd.array(n_glass / n_air)))
+        kx_B = n_air * k0 * float(nd.sin(nd.array(theta_B)))
+
+        result = stratix.solve(stack, wavelength, kx=kx_B, polarization=Polarization.TM)
+        R = float(result.R[0])
+        T = float(result.T[0])
+
+        assert abs(R) < 1e-12, f"TM R should be 0 at Brewster angle, got R={R}"
+        assert abs(T - 1.0) < 1e-12, f"T should be 1 at Brewster angle, got T={T}"
+
+    def test_grazing_incidence_R_equals_one(self, set_backend):
+        """TM R → 1.0 at grazing incidence for dielectric stacks."""
+        n_air, n_glass = 1.0, 1.5
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_glass**2),
+        )
+        wavelength = 5e-7
+        k0 = 2 * nd.pi / wavelength
+        theta_grazing = nd.array(89.9999 * nd.pi / 180)
+        kx = float(n_air * k0 * nd.sin(theta_grazing))
+
+        result = stratix.solve(stack, wavelength, kx=kx, polarization=Polarization.TM)
+        R = float(result.R[0])
+
+        assert R > 0.9999
+
+    def test_R_plus_T_equals_one_lossless(self, set_backend):
+        """Energy conservation for lossless dielectric interface."""
+        stack = Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=4.0),
+        )
+        wavelength = 5e-7
+        for kx in [0.0, 5e6, 1e7]:
+            result = stratix.solve(
+                stack, wavelength, kx=kx, polarization=Polarization.TM
+            )
+            R = float(result.R[0])
+            T = float(result.T[0])
+            assert abs(R + T - 1.0) < 1e-12, f"R+T={R + T} at kx={kx}"
+
+    def test_total_internal_reflection(self, set_backend):
+        """TM R → 1 at angles beyond critical angle."""
+        n_air, n_sub = 1.5, 1.0
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_sub**2),
+        )
+        wavelength = 5e-7
+        k0 = 2 * nd.pi / wavelength
+        kx = 1.1 * n_sub * k0
+        result = stratix.solve(
+            stack, wavelength, kx=float(kx), polarization=Polarization.TM
+        )
+        R = float(result.R[0])
+        T = float(result.T[0])
+        assert abs(R - 1.0) < 1e-12
+        assert abs(T) < 1e-12
+
+    def test_analytic_TM_fresnel(self, set_backend):
+        """TM R matches analytic Fresnel formula across angles."""
+        n_air, n_glass = 1.0, 1.5
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_glass**2),
+        )
+        wavelength = 5e-7
+        k0 = 2 * nd.pi / wavelength
+
+        for theta_deg in [10, 30, 50]:
+            theta_rad = nd.array(nd.pi * theta_deg / 180)
+            kx = float(n_air * k0 * nd.sin(theta_rad))
+
+            eps1 = n_air**2
+            eps2 = n_glass**2
+            kz1 = float(nd.real(nd.sqrt(nd.array(eps1 * k0**2 - kx**2) + 0j)))
+            kz2 = float(nd.real(nd.sqrt(nd.array(eps2 * k0**2 - kx**2) + 0j)))
+            r_TM_analytic = (eps2 * kz1 - eps1 * kz2) / (eps2 * kz1 + eps1 * kz2)
+            expected_R = float(abs(r_TM_analytic) ** 2)
+
+            result = stratix.solve(
+                stack, wavelength, kx=kx, polarization=Polarization.TM
+            )
+            R = float(result.R[0])
+
+            assert abs(R - expected_R) < 1e-10, (
+                f"θ={theta_deg}°: R={R}, expected={expected_R}"
+            )
+
+    def test_R_TE_unchanged(self, set_backend):
+        """TE results unchanged after TM addition (regression)."""
+        n_air, n_glass = 1.0, 1.5
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_glass**2),
+        )
+        wavelength = 5e-7
+        k0 = 2 * nd.pi / wavelength
+        theta_deg = 30.0
+        theta_rad = nd.array(nd.pi * theta_deg / 180)
+        kx = float(n_air * k0 * nd.sin(theta_rad))
+
+        result = stratix.solve(stack, wavelength, kx=kx, polarization=Polarization.TE)
+
+        kz0 = float(n_air * k0 * nd.cos(theta_rad))
+        kz1 = float(nd.sqrt(nd.array(float(n_glass**2) * k0**2 - kx**2)).real)
+        r_TE = (kz0 - kz1) / (kz0 + kz1)
+        expected_R = float(abs(r_TE) ** 2)
+
+        assert abs(float(result.R[0]) - expected_R) < 1e-10
+
+
+class TestMultiLayerTM:
+    def test_quarter_wave_ar_coating(self, set_backend):
+        """Single-layer quarter-wave AR coating: R → 0 at design λ for TM."""
+        n_air, n_mgf2, n_glass = 1.0, 1.38, 1.5
+        wavelength = 5e-7
+        d_ar = wavelength / (4 * n_mgf2)
+
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_glass**2),
+            layers=[Layer(thickness=d_ar, material=Material(epsilon=n_mgf2**2))],
+        )
+
+        result = stratix.solve(stack, wavelength, kx=0.0, polarization=Polarization.TM)
+
+        R = float(result.R[0])
+        T = float(result.T[0])
+        expected_R = (
+            (n_air * n_glass - n_mgf2**2) / (n_air * n_glass + n_mgf2**2)
+        ) ** 2
+        assert abs(R - expected_R) < 1e-12
+        assert abs(R + T - 1.0) < 1e-12
+
+    def test_R_plus_T_equals_one_lossless(self, set_backend):
+        """Energy conservation for lossless dielectric multilayers, TM."""
+        n_air, n_a, n_b, n_sub = 1.0, 1.38, 2.0, 1.5
+        wavelength = 5e-7
+
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_sub**2),
+            layers=[
+                Layer(thickness=100e-9, material=Material(epsilon=n_a**2)),
+                Layer(thickness=200e-9, material=Material(epsilon=n_b**2)),
+                Layer(thickness=50e-9, material=Material(epsilon=n_a**2)),
+            ],
+        )
+
+        for kx in [0.0, 5e6, 1e7]:
+            result = stratix.solve(
+                stack, wavelength, kx=kx, polarization=Polarization.TM
+            )
+            R = float(result.R[0])
+            T = float(result.T[0])
+            assert abs(R + T - 1.0) < 1e-12, f"R+T={R + T} at kx={kx}"
+
+    def test_bragg_mirror_convergence(self, set_backend):
+        """Bragg mirror: TM R increases with layer pairs."""
+        n_low, n_high = 1.38, 2.3
+        wavelength = 5e-7
+        d_low = wavelength / (4 * n_low)
+        d_high = wavelength / (4 * n_high)
+        n_air, n_sub = 1.0, 1.5
+
+        R_values = []
+        for N in [1, 2, 4, 8]:
+            layers = []
+            for _ in range(N):
+                layers.append(
+                    Layer(thickness=d_high, material=Material(epsilon=n_high**2))
+                )
+                layers.append(
+                    Layer(thickness=d_low, material=Material(epsilon=n_low**2))
+                )
+            stack = Stack(
+                superstrate=Material(epsilon=n_air**2),
+                substrate=Material(epsilon=n_sub**2),
+                layers=layers,
+            )
+            result = stratix.solve(
+                stack, wavelength, kx=0.0, polarization=Polarization.TM
+            )
+            R_values.append(float(result.R[0]))
+
+        for i in range(len(R_values) - 1):
+            assert R_values[i + 1] > R_values[i], f"R not monotonic: {R_values}"
+        assert R_values[-1] > 0.99, f"R={R_values[-1]} for 8-pair mirror"
+
+    def test_single_layer_off_normal(self, set_backend):
+        """Single-layer TM stack conserves energy off-normal."""
+        n_air, n_film, n_sub = 1.0, 1.38, 1.5
+        wavelength = 5e-7
+        d = wavelength / (4 * n_film)
+
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_sub**2),
+            layers=[Layer(thickness=d, material=Material(epsilon=n_film**2))],
+        )
+
+        theta_deg = 30.0
+        theta_rad_arr = nd.array(nd.pi * theta_deg / 180)
+        k0 = 2 * nd.pi / wavelength
+        kx = float(n_air * k0 * nd.sin(theta_rad_arr))
+
+        result = stratix.solve(stack, wavelength, kx=kx, polarization=Polarization.TM)
+        R = float(result.R[0])
+        T = float(result.T[0])
+        assert abs(R + T - 1.0) < 1e-12

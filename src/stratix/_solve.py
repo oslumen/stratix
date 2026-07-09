@@ -37,13 +37,7 @@ def solve(
     resolved = Method.SMATRIX if method == Method.AUTO else method
 
     if resolved != Method.SMATRIX:
-        raise NotImplementedError(
-            f"Method {resolved.value!r} not yet implemented"
-        )
-    if polarization != Polarization.TE:
-        raise NotImplementedError(
-            "Only TE polarization is currently supported"
-        )
+        raise NotImplementedError(f"Method {resolved.value!r} not yet implemented")
 
     R, T = _smatrix_solve(stack, wavelength, kx, polarization)
 

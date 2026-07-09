@@ -20,9 +20,7 @@ def _kz_single(epsilon: nd.ndarray, mu: nd.ndarray, k0: float, kx: float) -> nd.
     return nd.where(neg, -kz, kz)
 
 
-def _redheffer_star(
-    S_A: nd.ndarray, S_B: nd.ndarray
-) -> nd.ndarray:
+def _redheffer_star(S_A: nd.ndarray, S_B: nd.ndarray) -> nd.ndarray:
     """Combine two 2x2 S-matrices via the Redheffer star product.
 
     Parameters
@@ -107,14 +105,23 @@ def _smatrix_solve(
     omega = 2 * nd.pi * c / wavelength
     k0 = 2 * nd.pi / wavelength
 
-    if polarization != Polarization.TE:
-        raise NotImplementedError("Only TE polarization is currently supported")
-
-    media = [stack.superstrate] + [layer.material for layer in stack.layers] + [stack.substrate]
+    media = (
+        [stack.superstrate]
+        + [layer.material for layer in stack.layers]
+        + [stack.substrate]
+    )
     epsilons = [m.epsilon(omega=omega) for m in media]
     mus = [m.mu(omega=omega) for m in media]
     kzs = [_kz_single(eps, mu, k0, kx) for eps, mu in zip(epsilons, mus, strict=True)]
-    Zs = [kz / mu for kz, mu in zip(kzs, mus, strict=True)]
+
+    if polarization == Polarization.TE:
+        denom_vals = mus
+    elif polarization == Polarization.TM:
+        denom_vals = epsilons
+    else:
+        raise NotImplementedError(f"Polarization {polarization!r} not supported")
+
+    Zs = [kz / denom for kz, denom in zip(kzs, denom_vals, strict=True)]
 
     n_interfaces = len(media) - 1
 
@@ -131,6 +138,10 @@ def _smatrix_solve(
     t_total = S_total[1, 0]
 
     R = nd.abs(r_total) ** 2
-    T = nd.real(kzs[-1] / mus[-1]) / nd.real(kzs[0] / mus[0]) * nd.abs(t_total) ** 2
+    T = (
+        nd.real(kzs[-1] / denom_vals[-1])
+        / nd.real(kzs[0] / denom_vals[0])
+        * nd.abs(t_total) ** 2
+    )
 
     return R, T
