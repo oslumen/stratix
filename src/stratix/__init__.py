@@ -8,5 +8,14 @@ try:
 except PackageNotFoundError:
     __version__ = "unknown"
 
+from ._result import Result
+from ._solve import solve
+from ._types import Method
+from ._types import Polarization
 
-
+__all__ = [
+    "Method",
+    "Polarization",
+    "Result",
+    "solve",
+]
