@@ -17,7 +17,7 @@ from ._smatrix import _kz_single
 
 def _abeles_solve(
     stack: Stack, wavelength: float, kx: float, polarization: Polarization
-) -> tuple[nd.ndarray, nd.ndarray]:
+) -> tuple[nd.ndarray, nd.ndarray, dict]:
     c = 299792458.0
     omega = 2 * nd.pi * c / wavelength
     k0 = 2 * nd.pi / wavelength
@@ -80,4 +80,4 @@ def _abeles_solve(
         * nd.abs(t_total) ** 2
     )
 
-    return R, T
+    return R, T, {}

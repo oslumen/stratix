@@ -83,7 +83,7 @@ def _propagation_smatrix(kz: nd.ndarray, thickness: float) -> nd.ndarray:
 
 def _smatrix_solve(
     stack: Stack, wavelength: float, kx: float, polarization: Polarization
-) -> tuple[nd.ndarray, nd.ndarray]:
+) -> tuple[nd.ndarray, nd.ndarray, dict]:
     """Compute R and T for a multilayer stack via S-matrix assembly.
 
     Assembles interface and propagation S-matrices and combines them
@@ -100,6 +100,7 @@ def _smatrix_solve(
     -------
     R : Power reflectance (0-D ndarray).
     T : Power transmittance (0-D ndarray).
+    intermediates : Dict of S-matrix data needed for field reconstruction.
     """
     c = 299792458.0
     omega = 2 * nd.pi * c / wavelength
@@ -125,14 +126,44 @@ def _smatrix_solve(
 
     n_interfaces = len(media) - 1
 
-    S_total = _interface_smatrix(Zs[0], Zs[1])
+    interface_smatrices = [_interface_smatrix(Zs[0], Zs[1])]
+    propagation_smatrices: list[nd.ndarray] = []
+
+    S_total = interface_smatrices[0]
+
+    r_before = S_total[0, 0]
+    t_before = S_total[1, 0]
+    R_before = nd.abs(r_before) ** 2
+    T_fac_before = (
+        nd.real(kzs[1] / denom_vals[1]) / nd.real(kzs[0] / denom_vals[0])
+    )
+    T_before = T_fac_before * nd.abs(t_before) ** 2
+
+    layer_abs_list: list = []
 
     for i in range(1, n_interfaces):
         d = stack.layers[i - 1].thickness
         P = _propagation_smatrix(kzs[i], d)
+        propagation_smatrices.append(P)
         S_total = _redheffer_star(S_total, P)
         S_int = _interface_smatrix(Zs[i], Zs[i + 1])
+        interface_smatrices.append(S_int)
         S_total = _redheffer_star(S_total, S_int)
+
+        r_after = S_total[0, 0]
+        t_after = S_total[1, 0]
+        R_after = nd.abs(r_after) ** 2
+        T_fac_after = (
+            nd.real(kzs[i + 1] / denom_vals[i + 1])
+            / nd.real(kzs[0] / denom_vals[0])
+        )
+        T_after = T_fac_after * nd.abs(t_after) ** 2
+
+        A_layer = (R_before + T_before) - (R_after + T_after)
+        layer_abs_list.append(A_layer)
+
+        R_before = R_after
+        T_before = T_after
 
     r_total = S_total[0, 0]
     t_total = S_total[1, 0]
@@ -144,4 +175,22 @@ def _smatrix_solve(
         * nd.abs(t_total) ** 2
     )
 
-    return R, T
+    energy_bal = R + T
+    if layer_abs_list:
+        for a in layer_abs_list:
+            energy_bal = energy_bal + a
+
+    intermediates = {
+        "kzs": kzs,
+        "denom_vals": denom_vals,
+        "r_total": r_total,
+        "t_total": t_total,
+        "interface_smatrices": interface_smatrices,
+        "propagation_smatrices": propagation_smatrices,
+        "thicknesses": [layer.thickness for layer in stack.layers],
+        "polarization": polarization,
+        "layer_absorption": layer_abs_list,
+        "energy_balance": energy_bal,
+    }
+
+    return R, T, intermediates

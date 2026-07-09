@@ -31,7 +31,9 @@ class Polarization(StrEnum):
     ----------
     TE : Transverse electric (s-polarized).
     TM : Transverse magnetic (p-polarized).
+    BOTH : Compute TE and TM simultaneously.
     """
 
     TE = "TE"
     TM = "TM"
+    BOTH = "BOTH"

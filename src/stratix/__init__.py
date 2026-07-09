@@ -8,6 +8,8 @@ try:
 except PackageNotFoundError:
     __version__ = "unknown"
 
+from ._convenience import solve_angles
+from ._field import compute_field_profile
 from ._result import Result
 from ._solve import solve
 from ._types import Method
@@ -17,5 +19,7 @@ __all__ = [
     "Method",
     "Polarization",
     "Result",
+    "compute_field_profile",
     "solve",
+    "solve_angles",
 ]
