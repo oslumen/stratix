@@ -41,7 +41,7 @@ dev = ["pytest", "pytest-cov", "ruff", "mypy", "pre-commit"]
 docs = [
   "sphinx>=7.4",
   # "shibuya",
-  "myst-parser>=4.0",
+  "myst-parser>=5.1.0",
   "sphinx-autodoc-typehints>=2.3",
   "sphinx-copybutton>=0.5",
   "sphinx-design>=0.7",
