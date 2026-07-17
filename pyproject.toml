@@ -39,7 +39,7 @@ Repository = "https://github.com/oslumen/stratix"
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov", "ruff", "mypy", "pre-commit"]
 docs = [
-  "sphinx>=7.4",
+  "sphinx>=9.0.4",
   # "shibuya",
   "myst-parser>=4.0",
   "sphinx-autodoc-typehints>=2.3",
