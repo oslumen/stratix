@@ -39,6 +39,8 @@ Thumbs.db
 # Documentation
 _build/
 docs/_build/
+docs/examples/
+docs/sg_execution_times.rst
 
 # Notebooks
 .ipynb_checkpoints/

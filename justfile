@@ -64,7 +64,7 @@ docs-live host="127.0.0.1" port="8001":
 
 # Clean Sphinx docs
 docs-clean:
-    rm -rf docs/_build
+    rm -rf docs/_build docs/examples
 
 
 # Clean generated directories and files

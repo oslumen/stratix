@@ -43,7 +43,7 @@ def _redheffer_star(S_A: nd.ndarray, S_B: nd.ndarray) -> nd.ndarray:
     S21 = B21 * A21 / denom
     S22 = B22 + B21 * A22 * B12 / denom
 
-    return nd.array([[S11, S12], [S21, S22]])
+    return nd.stack([nd.stack([S11, S12]), nd.stack([S21, S22])])
 
 
 def _interface_smatrix(Z_left: nd.ndarray, Z_right: nd.ndarray) -> nd.ndarray:
@@ -61,7 +61,7 @@ def _interface_smatrix(Z_left: nd.ndarray, Z_right: nd.ndarray) -> nd.ndarray:
     r = (Z_left - Z_right) / (Z_left + Z_right)
     t_fwd = 2 * Z_left / (Z_left + Z_right)
     t_rev = 2 * Z_right / (Z_left + Z_right)
-    return nd.array([[r, t_rev], [t_fwd, -r]])
+    return nd.stack([nd.stack([r, t_rev]), nd.stack([t_fwd, -r])])
 
 
 def _propagation_smatrix(kz: nd.ndarray, thickness: float) -> nd.ndarray:
@@ -78,11 +78,15 @@ def _propagation_smatrix(kz: nd.ndarray, thickness: float) -> nd.ndarray:
     """
     phi = kz * thickness
     p = nd.exp(1j * phi)
-    return nd.array([[0, p], [p, 0]])
+    return nd.stack([nd.stack([0 * p, p]), nd.stack([p, 0 * p])])
 
 
 def _smatrix_solve(
-    stack: Stack, wavelength: float, kx: float, polarization: Polarization
+    stack: Stack,
+    wavelength: float,
+    kx: float,
+    polarization: Polarization,
+    thicknesses: nd.ndarray | None = None,
 ) -> tuple[nd.ndarray, nd.ndarray, dict]:
     """Compute R and T for a multilayer stack via S-matrix assembly.
 
@@ -94,7 +98,11 @@ def _smatrix_solve(
     stack : Multilayer stack (superstrate, layers, substrate).
     wavelength : Vacuum wavelength in meters.
     kx : In-plane wavevector component in rad/m.
-    polarization : Currently only TE is supported.
+    polarization : ``TE`` or ``TM``.
+    thicknesses : Optional 1-D ndarray overriding the stack's layer
+        thicknesses.  Must have length ``len(stack.layers)``.  When
+        provided, ``stack.layers[i].thickness`` is ignored in favour
+        of ``thicknesses[i]``, enabling autodiff w.r.t. thickness.
 
     Returns
     -------
@@ -141,8 +149,15 @@ def _smatrix_solve(
 
     layer_abs_list: list = []
 
+    if thicknesses is not None:
+        _thicknesses = thicknesses
+        _thicknesses_intr = [float(layer.thickness) for layer in stack.layers]
+    else:
+        _thicknesses = nd.array([layer.thickness for layer in stack.layers])
+        _thicknesses_intr = [float(t) for t in _thicknesses]
+
     for i in range(1, n_interfaces):
-        d = stack.layers[i - 1].thickness
+        d = _thicknesses[i - 1]
         P = _propagation_smatrix(kzs[i], d)
         propagation_smatrices.append(P)
         S_total = _redheffer_star(S_total, P)
@@ -187,7 +202,7 @@ def _smatrix_solve(
         "t_total": t_total,
         "interface_smatrices": interface_smatrices,
         "propagation_smatrices": propagation_smatrices,
-        "thicknesses": [layer.thickness for layer in stack.layers],
+        "thicknesses": _thicknesses_intr,
         "polarization": polarization,
         "layer_absorption": layer_abs_list,
         "energy_balance": energy_bal,

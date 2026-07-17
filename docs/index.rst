@@ -3,8 +3,13 @@
 
 .. container:: title-bar
 
-   stratix
-   =======
+.. raw:: html
+    
+    <div class="logo-homepage sy-head-brand">
+        <img class="light-logo" src="_static/_assets/stratix-name.svg" alt="stratix" height="28" loading="lazy">
+        <img class="dark-logo" src="_static/_assets/stratix-name-dark.svg" alt="stratix" height="28" loading="lazy">
+    </div>
+    
 
 .. rst-class:: lead
 

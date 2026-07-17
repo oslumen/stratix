@@ -28,22 +28,53 @@ extensions = [
     "sphinx_gallery.gen_gallery",
 ]
 
-html_theme = "shibuya"
+html_theme = "oslumen"
 html_title = "stratix"
+
+html_logo = "_static/_assets/stratix-name.svg"
+html_favicon = "_static/_assets/stratix.svg"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_baseurl = "https://github.com/oslumen/stratix"
-html_copy_source = False
-html_show_sourcelink = False
+
+html_copy_source = True
+html_show_sourcelink = True
 
 html_extra_path: list[str] = []
-html_theme_options = {}
 
 html_theme_options = {
-    "accent_color": "red",
+    # "accent_color": "red",
+    "light_logo": "_static/_assets/stratix-name.svg",
+    "dark_logo": "_static/_assets/stratix-name-dark.svg",
+    "slack_url": "https://www.slack.com/oslumen",
+    "youtube_url": "https://www.youtube.com/oslumen",
+    "linkedin_url": "https://www.linkedin.com/oslumen",
+    "bluesky_url": "https://www.bluesky.com/oslumen",
+    "discussion_url": "https://github.com/oslumen/stratix/discussions",
     "github_url": "https://github.com/oslumen/stratix",
+    # "banner": "This a community-driven project. Your <a href='https://github.com/oslumen/sphinx_theme_oslumen'>contributions</a> are welcome!",
+    # "carbon_ads_code": "REPLACE_WITH_CODE",
     "globaltoc_expand_depth": 1,
     "open_in_perplexity": True,
+    "use_root_redirect": False,
+    "repository_url": "https://github.com/oslumen/stratix",
+    "repository_branch": "main",
+    "launch_buttons": {
+        "binderhub_url": "https://mybinder.org",
+        "colab_url": "https://colab.research.google.com/",
+        "deepnote_url": "https://deepnote.com/",
+        "notebook_interface": "jupyterlab",
+        "thebe": True,
+        "jupyterlite_url": "https://jupyterlite.github.io/demo/lab/",
+        # "jupyterhub_url": "https://datahub.berkeley.edu",  # For testing
+    },
+    "use_edit_page_button": True,
+    "use_source_button": True,
+    "use_issues_button": True,
+    "use_download_button": True,
+    "use_fullscreen_button": True,
+    "globaltoc_expand_depth": 1,
+    "path_to_docs": "docs",
 }
 
 html_context = {
@@ -54,6 +85,16 @@ html_context = {
 
 
 templates_path = ["_templates"]
+
+
+extlinks = {
+    "pull": (
+        "https://github.com/oslumen/stratix/pull/%s",
+        "pull request #%s",
+    ),
+    "issue": ("https://github.com/oslumen/stratix/issues/%s", "issue #%s"),
+}
+
 
 # sphinx-autodoc-typehints
 autodoc_typehints = "description"
