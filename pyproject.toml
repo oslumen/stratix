@@ -22,7 +22,7 @@ classifiers = [
   "Topic :: Utilities",
 ]
 dependencies = [
-  "loguru>=0.7",
+  "loguru>=0.7.3",
   "phokaia",
   "phokaia",
 ]
