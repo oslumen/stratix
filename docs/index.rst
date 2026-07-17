@@ -1,7 +1,6 @@
 :layout: landing
 :description: Stratified Media Electromagnetic Solver
 
-.. container:: title-bar
 
 .. raw:: html
     
@@ -17,7 +16,7 @@
 
 .. container:: buttons
 
-    :doc:`Docs <install>`
+    :doc:`Docs <start/install>`
     `GitHub <https://github.com/oslumen/stratix>`_
 
 .. grid:: 1 1 2 3
@@ -40,7 +39,7 @@
     :caption: Getting started
     :hidden:
 
-    install
+    start/index
 
 .. toctree::
     :caption: Examples
@@ -52,4 +51,4 @@
     :caption: API
     :hidden:
 
-    api
+    api/index

@@ -53,6 +53,7 @@ docs = [
   "matplotlib",
   "memory-profiler",
   "sphinx-theme-oslumen",
+  "sphinx-thebe"
 ]
 
 [tool.setuptools.packages.find]

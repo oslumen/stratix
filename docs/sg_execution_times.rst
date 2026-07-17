@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:11.449** total execution time for 7 files **from all galleries**:
+**00:10.448** total execution time for 7 files **from all galleries**:
 
 .. container::
 
@@ -33,23 +33,23 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_examples_plot_autodiff.py` (``../examples/plot_autodiff.py``)
-     - 00:07.817
-     - 710.6
+     - 00:07.276
+     - 638.7
    * - :ref:`sphx_glr_examples_plot_bragg_mirror.py` (``../examples/plot_bragg_mirror.py``)
-     - 00:00.863
-     - 76.1
+     - 00:00.804
+     - 76.2
    * - :ref:`sphx_glr_examples_plot_ar_coating.py` (``../examples/plot_ar_coating.py``)
-     - 00:00.615
-     - 77.2
+     - 00:00.510
+     - 77.3
    * - :ref:`sphx_glr_examples_plot_fresnel.py` (``../examples/plot_fresnel.py``)
-     - 00:00.577
-     - 75.6
+     - 00:00.490
+     - 75.7
    * - :ref:`sphx_glr_examples_plot_absorption.py` (``../examples/plot_absorption.py``)
-     - 00:00.555
+     - 00:00.476
      - 75.6
    * - :ref:`sphx_glr_examples_plot_fields.py` (``../examples/plot_fields.py``)
-     - 00:00.515
+     - 00:00.465
      - 75.6
    * - :ref:`sphx_glr_examples_plot_si_ar_coating.py` (``../examples/plot_si_ar_coating.py``)
-     - 00:00.506
+     - 00:00.427
      - 75.6

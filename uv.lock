@@ -2950,6 +2950,19 @@ wheels = [
 ]
 
 [[package]]
+name = "sphinx-thebe"
+version = "0.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "sphinx", version = "9.0.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "sphinx", version = "9.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/da/fd/926ba4af1eb2708b1ac0fa4376e4bfb11d9a32b2a00e3614137a569c1ddf/sphinx_thebe-0.3.1.tar.gz", hash = "sha256:576047f45560e82f64aa5f15200b1eb094dcfe1c5b8f531a8a65bd208e25a493", size = 20789, upload-time = "2024-02-07T13:31:57.002Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ca/7c/a53bdb465fd364bc3d255d96d5d70e6ba5183cfb4e45b8aa91c59b099124/sphinx_thebe-0.3.1-py3-none-any.whl", hash = "sha256:e7e7edee9f0d601c76bc70156c471e114939484b111dd8e74fe47ac88baffc52", size = 9030, upload-time = "2024-02-07T13:31:55.286Z" },
+]
+
+[[package]]
 name = "sphinx-theme-oslumen"
 source = { editable = "../../sphinx_theme_oslumen" }
 dependencies = [
@@ -3115,6 +3128,7 @@ docs = [
     { name = "sphinx-design" },
     { name = "sphinx-gallery" },
     { name = "sphinx-sitemap" },
+    { name = "sphinx-thebe" },
     { name = "sphinx-theme-oslumen" },
     { name = "sphinxcontrib-mermaid" },
 ]
@@ -3139,6 +3153,7 @@ requires-dist = [
     { name = "sphinx-design", marker = "extra == 'docs'", specifier = ">=0.7" },
     { name = "sphinx-gallery", marker = "extra == 'docs'" },
     { name = "sphinx-sitemap", marker = "extra == 'docs'" },
+    { name = "sphinx-thebe", marker = "extra == 'docs'" },
     { name = "sphinx-theme-oslumen", marker = "extra == 'docs'", editable = "../../sphinx_theme_oslumen" },
     { name = "sphinxcontrib-mermaid", marker = "extra == 'docs'", specifier = ">=2.0" },
 ]

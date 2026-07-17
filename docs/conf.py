@@ -26,6 +26,7 @@ extensions = [
     "sphinx_sitemap",
     "sphinx_autodoc_typehints",
     "sphinx_gallery.gen_gallery",
+    "sphinx_thebe",
 ]
 
 html_theme = "oslumen"
