@@ -13,6 +13,8 @@ from phokaia import Stack
 
 from .._types import Polarization
 from ._smatrix import _kz_single
+from ._util import _safe_R
+from ._util import _safe_T
 
 
 def _admittance_solve(
@@ -49,7 +51,8 @@ def _admittance_solve(
         Y_in = Y_layer * (Y_in - 1j * Y_layer * t) / (Y_layer - 1j * Y_in * t)
 
     r = (Y_super - Y_in) / (Y_super + Y_in)
-    R = nd.abs(r) ** 2
+    kz0, denom0 = kzs[0], denom_vals[0]
+    R = _safe_R(r, kz0, denom0)
 
     E = nd.array(1.0) + r
     Y_current = Y_in
@@ -64,10 +67,6 @@ def _admittance_solve(
         Y_current = Y_layer * (Y_current + 1j * Y_layer * t) / (Y_layer + 1j * Y_current * t)
 
     t_total = E
-    T = (
-        nd.real(kzs[-1] / denom_vals[-1])
-        / nd.real(kzs[0] / denom_vals[0])
-        * nd.abs(t_total) ** 2
-    )
+    T = _safe_T(t_total, kz0, denom0, kzs[-1], denom_vals[-1])
 
     return R, T, {}

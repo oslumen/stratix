@@ -12,6 +12,8 @@ from phokaia import Stack
 
 from .._types import Polarization
 from ._smatrix import _kz_single
+from ._util import _safe_R
+from ._util import _safe_T
 
 
 def _dtn_solve(
@@ -48,7 +50,8 @@ def _dtn_solve(
         Z_in = Z_layer * (Z_in - 1j * Z_layer * t) / (Z_layer - 1j * Z_in * t)
 
     r = (Z_super - Z_in) / (Z_super + Z_in)
-    R = nd.abs(r) ** 2
+    kz0, denom0 = kzs[0], denom_vals[0]
+    R = _safe_R(r, kz0, denom0)
 
     E = nd.array(1.0) + r
     Z_current = Z_in
@@ -63,10 +66,6 @@ def _dtn_solve(
         Z_current = Z_layer * (Z_current + 1j * Z_layer * t) / (Z_layer + 1j * Z_current * t)
 
     t_total = E
-    T = (
-        nd.real(kzs[-1] / denom_vals[-1])
-        / nd.real(kzs[0] / denom_vals[0])
-        * nd.abs(t_total) ** 2
-    )
+    T = _safe_T(t_total, kz0, denom0, kzs[-1], denom_vals[-1])
 
     return R, T, {}

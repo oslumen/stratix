@@ -13,6 +13,8 @@ from phokaia import Stack
 
 from .._types import Polarization
 from ._smatrix import _kz_single
+from ._util import _safe_R
+from ._util import _safe_T
 
 
 def _abeles_solve(
@@ -73,11 +75,8 @@ def _abeles_solve(
     r_total = (Z_0 * A - B) / denom
     t_total = nd.array(2) * Z_0 / denom
 
-    R = nd.abs(r_total) ** 2
-    T = (
-        nd.real(kzs[-1] / denom_vals[-1])
-        / nd.real(kzs[0] / denom_vals[0])
-        * nd.abs(t_total) ** 2
-    )
+    kz0, denom0 = kzs[0], denom_vals[0]
+    R = _safe_R(r_total, kz0, denom0)
+    T = _safe_T(t_total, kz0, denom0, kzs[-1], denom_vals[-1])
 
     return R, T, {}

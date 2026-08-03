@@ -6,6 +6,8 @@ import numdiff as nd
 from phokaia import Stack
 
 from .._types import Polarization
+from ._util import _safe_R
+from ._util import _safe_T
 
 
 def _kz_single(epsilon: nd.ndarray, mu: nd.ndarray, k0: float, kx: float) -> nd.ndarray:
@@ -38,10 +40,11 @@ def _redheffer_star(S_A: nd.ndarray, S_B: nd.ndarray) -> nd.ndarray:
     B21, B22 = S_B[1, 0], S_B[1, 1]
 
     denom = 1.0 - A22 * B11
-    S11 = A11 + A12 * B11 * A21 / denom
-    S12 = A12 * B12 / denom
-    S21 = B21 * A21 / denom
-    S22 = B22 + B21 * A22 * B12 / denom
+    safe_denom = nd.where(denom == 0, nd.ones_like(denom), denom)
+    S11 = A11 + A12 * B11 * A21 / safe_denom
+    S12 = A12 * B12 / safe_denom
+    S21 = B21 * A21 / safe_denom
+    S22 = B22 + B21 * A22 * B12 / safe_denom
 
     return nd.stack([nd.stack([S11, S12]), nd.stack([S21, S22])])
 
@@ -134,6 +137,8 @@ def _smatrix_solve(
 
     n_interfaces = len(media) - 1
 
+    kz0, denom0 = kzs[0], denom_vals[0]
+
     interface_smatrices = [_interface_smatrix(Zs[0], Zs[1])]
     propagation_smatrices: list[nd.ndarray] = []
 
@@ -141,11 +146,8 @@ def _smatrix_solve(
 
     r_before = S_total[0, 0]
     t_before = S_total[1, 0]
-    R_before = nd.abs(r_before) ** 2
-    T_fac_before = (
-        nd.real(kzs[1] / denom_vals[1]) / nd.real(kzs[0] / denom_vals[0])
-    )
-    T_before = T_fac_before * nd.abs(t_before) ** 2
+    R_before = _safe_R(r_before, kz0, denom0)
+    T_before = _safe_T(t_before, kz0, denom0, kzs[1], denom_vals[1])
 
     layer_abs_list: list = []
 
@@ -154,7 +156,7 @@ def _smatrix_solve(
         _thicknesses_intr = [float(layer.thickness) for layer in stack.layers]
     else:
         _thicknesses = nd.array([layer.thickness for layer in stack.layers])
-        _thicknesses_intr = [float(t) for t in _thicknesses]
+        _thicknesses_intr = [float(layer.thickness) for layer in stack.layers]
 
     for i in range(1, n_interfaces):
         d = _thicknesses[i - 1]
@@ -167,12 +169,8 @@ def _smatrix_solve(
 
         r_after = S_total[0, 0]
         t_after = S_total[1, 0]
-        R_after = nd.abs(r_after) ** 2
-        T_fac_after = (
-            nd.real(kzs[i + 1] / denom_vals[i + 1])
-            / nd.real(kzs[0] / denom_vals[0])
-        )
-        T_after = T_fac_after * nd.abs(t_after) ** 2
+        R_after = _safe_R(r_after, kz0, denom0)
+        T_after = _safe_T(t_after, kz0, denom0, kzs[i + 1], denom_vals[i + 1])
 
         A_layer = (R_before + T_before) - (R_after + T_after)
         layer_abs_list.append(A_layer)
@@ -183,12 +181,8 @@ def _smatrix_solve(
     r_total = S_total[0, 0]
     t_total = S_total[1, 0]
 
-    R = nd.abs(r_total) ** 2
-    T = (
-        nd.real(kzs[-1] / denom_vals[-1])
-        / nd.real(kzs[0] / denom_vals[0])
-        * nd.abs(t_total) ** 2
-    )
+    R = _safe_R(r_total, kz0, denom0)
+    T = _safe_T(t_total, kz0, denom0, kzs[-1], denom_vals[-1])
 
     energy_bal = R + T
     if layer_abs_list:
