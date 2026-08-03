@@ -1,14 +1,17 @@
-"""Convenience APIs: solve_angles (Issue #19)."""
+"""Convenience APIs: solve_angles, solve_from_source (Issue #19)."""
 
 from __future__ import annotations
 
 import numdiff as nd
+from phokaia import PlaneWave
 from phokaia import Stack
 
 from ._result import Result
 from ._solve import solve
 from ._types import Method
 from ._types import Polarization
+
+_C0: float = 299792458.0  # speed of light in vacuum (m/s)
 
 
 def solve_angles(
@@ -87,4 +90,51 @@ def solve_angles(
         kx=nd.array(kx_list),
         polarization=polarization,
         method_used=result.method_used,
+    )
+
+
+def solve_from_source(
+    stack: Stack,
+    source: PlaneWave,
+    polarization: Polarization,
+    method: Method = Method.AUTO,
+    absorption: bool = False,
+) -> Result:
+    """Compute reflectance/transmittance from a PlaneWave source.
+
+    Extracts wavelength (from ω) and in-plane wavevector kx from a
+    ``phokaia.PlaneWave`` and delegates to :func:`solve`.
+
+    Parameters
+    ----------
+    stack : Planar multilayer stack.
+    source : PlaneWave object defining frequency, angle, and medium.
+    polarization : ``TE`` or ``TM``.
+    method : Solver method.
+    absorption : If ``True``, compute per-layer absorption.
+
+    Returns
+    -------
+    Result with ``R``, ``T``, ``wavelengths``, ``kx`` arrays.
+    """
+    omega = complex(source.omega)
+    if omega == 0:
+        raise ValueError("source omega must be non-zero")
+
+    wavelength = 2 * nd.pi * _C0 / omega.real
+
+    kx: float | nd.ndarray
+    if source.dim == 1:
+        kx = 0.0
+    else:
+        wv = source.wavevector
+        kx = float(wv[0].real)
+
+    return solve(
+        stack,
+        wavelength=wavelength,
+        kx=kx,
+        polarization=polarization,
+        method=method,
+        absorption=absorption,
     )

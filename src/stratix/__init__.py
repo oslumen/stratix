@@ -9,6 +9,7 @@ except PackageNotFoundError:
     __version__ = "unknown"
 
 from ._convenience import solve_angles
+from ._convenience import solve_from_source
 from ._field import compute_field_profile
 from ._result import Result
 from ._solve import solve
@@ -22,4 +23,5 @@ __all__ = [
     "compute_field_profile",
     "solve",
     "solve_angles",
+    "solve_from_source",
 ]
