@@ -16,12 +16,6 @@ def _central_fd(f, x, h=1e-8):
     return (f(x + h) - f(x - h)) / (2 * h)
 
 
-_GRAD_TORCH_REASON = (
-    "numdiff torch backend does not preserve gradient trace "
-    "through ``nd.array`` (Issue #25)"
-)
-
-
 @pytest.fixture(params=["numpy", "jax", "torch", "autograd"])
 def set_backend(request):
     backend = request.param
@@ -48,9 +42,6 @@ class TestGradWavelength:
         """dR/dλ via nd.grad matches central finite difference."""
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support grad")
-        if nd.get_backend() == "torch":
-            pytest.skip(_GRAD_TORCH_REASON)
-
         from stratix._autodiff import _solve_raw
 
         n_air, n_film, n_sub = 1.0, 1.38, 1.5
@@ -78,9 +69,6 @@ class TestGradWavelength:
         """d(R+T)/dλ = 0 for lossless dielectric at off-resonance λ."""
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support grad")
-        if nd.get_backend() == "torch":
-            pytest.skip(_GRAD_TORCH_REASON)
-
         from stratix._autodiff import _solve_raw
 
         n_air, n_film, n_sub = 1.0, 1.38, 1.5
@@ -115,9 +103,6 @@ class TestGradThickness:
         """dR/dt via nd.grad matches central finite difference."""
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support grad")
-        if nd.get_backend() == "torch":
-            pytest.skip(_GRAD_TORCH_REASON)
-
         from stratix._autodiff import _solve_raw_with_thicknesses
 
         n_air, n_film, n_sub = 1.0, 1.38, 1.5
@@ -147,9 +132,6 @@ class TestGradThickness:
         """dT/dt via nd.grad matches central finite difference."""
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support grad")
-        if nd.get_backend() == "torch":
-            pytest.skip(_GRAD_TORCH_REASON)
-
         from stratix._autodiff import _solve_raw_with_thicknesses
 
         n_air, n_film, n_sub = 1.0, 1.38, 1.5
@@ -179,9 +161,6 @@ class TestGradThickness:
         """dR/dt + dT/dt = 0 for lossless dielectrics (energy conservation)."""
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support grad")
-        if nd.get_backend() == "torch":
-            pytest.skip(_GRAD_TORCH_REASON)
-
         from stratix._autodiff import _solve_raw_with_thicknesses
 
         n_air, n_film, n_sub = 1.0, 1.38, 1.5
@@ -220,9 +199,6 @@ class TestMultiLayerGrad:
         """Layer-by-layer dR/dt matches FD for 2-layer stack."""
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support grad")
-        if nd.get_backend() == "torch":
-            pytest.skip(_GRAD_TORCH_REASON)
-
         from stratix._autodiff import _solve_raw_with_thicknesses
 
         n_air, n_a, n_b, n_sub = 1.0, 1.38, 2.0, 1.5
