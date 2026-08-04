@@ -17,10 +17,10 @@ def sample_data() -> dict[str, float]:
     return {"x": 1.0, "y": 2.0, "z": 3.0}
 
 
-@pytest.fixture(params=["numpy", "jax", "torch", "autograd"])
+@pytest.fixture(params=nd.available_backends)
 def set_backend(request):
     backend = request.param
-    if not getattr(nd, f"HAS_{backend.upper()}", False):
+    if backend not in nd.available_backends:
         pytest.skip(f"Backend {backend!r} not available")
     old = nd.get_backend()
     nd.set_backend(backend)

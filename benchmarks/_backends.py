@@ -7,21 +7,27 @@ from contextlib import contextmanager
 
 import numdiff as nd
 
-_BACKEND_NAMES = ("numpy", "autograd", "jax", "torch")
-
 
 def available_backends() -> list[str]:
     """Return list of installed numdiff backend names.
 
-    Checks the ``HAS_*`` flags (:data:`numdiff.HAS_JAX`, etc.) at call
-    time so the result reflects the current environment.
+    Delegates to :data:`numdiff.available_backends` — always reflects
+    the current environment.
 
     Returns
     -------
     list[str]
         Backend names that are importable, e.g. ``['numpy', 'jax']``.
     """
-    return [b for b in _BACKEND_NAMES if getattr(nd, f"HAS_{b.upper()}", False)]
+    return nd.available_backends
+
+
+def has_cuda() -> bool:
+    """Return ``True`` if CUDA is available.
+
+    Delegates to :data:`numdiff.HAS_CUDA`.
+    """
+    return nd.HAS_CUDA
 
 
 @contextmanager
@@ -49,10 +55,11 @@ def backend_scope(
     ValueError
         If *name* is not a recognised backend or not installed.
     """
-    if name not in _BACKEND_NAMES:
-        raise ValueError(f"Unknown backend {name!r}. Expected one of {_BACKEND_NAMES}.")
-    if not getattr(nd, f"HAS_{name.upper()}", False):
-        raise ValueError(f"Backend {name!r} is not installed.")
+    if name not in nd.available_backends:
+        raise ValueError(
+            f"Backend {name!r} is not installed. "
+            f"Available: {nd.available_backends}"
+        )
 
     old_backend = nd.get_backend()
     old_device = nd.get_device()

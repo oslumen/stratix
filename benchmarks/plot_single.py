@@ -172,22 +172,7 @@ else:
 # Compare CPU vs GPU timings for JAX and PyTorch backends when CUDA is
 # available.  The GPU bar is omitted when CUDA is not detected.
 
-_HAS_CUDA = False
-try:
-    import jax  # noqa: F811
-
-    _HAS_CUDA = len(jax.devices("gpu")) > 0
-except Exception:
-    pass
-if not _HAS_CUDA:
-    try:
-        import torch  # noqa: F811
-
-        _HAS_CUDA = torch.cuda.is_available()
-    except Exception:
-        pass
-
-if _HAS_CUDA:
+if nd.HAS_CUDA:
     gpu_backends = [b for b in ("jax", "torch") if b in backends]
     gpu_cpu: dict[str, float] = {}
     gpu_gpu: dict[str, float] = {}
