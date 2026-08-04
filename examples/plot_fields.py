@@ -12,11 +12,15 @@ from the stored intermediate S-matrices.
 # At the design wavelength, the AR condition creates a standing-wave
 # pattern with matched amplitudes — visible in the field profile.
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+from phokaia import Layer
+from phokaia import Material
+from phokaia import Polarization
+from phokaia import Stack
 
-from phokaia import Material, Layer, Stack
-from stratix import solve, compute_field_profile, Polarization
+from stratix import compute_field_profile
+from stratix import solve
 
 air = Material(epsilon=1.0, name="Air")
 mgf2 = Material(epsilon=1.38**2, name="MgF₂")

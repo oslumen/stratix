@@ -13,11 +13,14 @@ balance R + T + ΣA = 1.
 # Absorption requires ``absorption=True`` and calling ``solve`` at each
 # wavelength individually.
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+from phokaia import Layer
+from phokaia import Material
+from phokaia import Polarization
+from phokaia import Stack
 
-from phokaia import Material, Layer, Stack
-from stratix import solve, Polarization
+from stratix import solve
 
 air = Material(epsilon=1.0, name="Air")
 au = Material(epsilon=complex(-3.68, 2.90), name="Au")

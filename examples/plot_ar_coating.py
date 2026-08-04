@@ -11,11 +11,14 @@ design wavelength. We sweep wavelength to see the AR band.
 # wavelength λ₀. Here λ₀ = 550 nm, MgF₂ index n = 1.38, so
 # d = 99.6 nm. We compare bare glass against the coated stack.
 
-import numdiff as nd
 import matplotlib.pyplot as plt
+import numdiff as nd
+from phokaia import Layer
+from phokaia import Material
+from phokaia import Polarization
+from phokaia import Stack
 
-from phokaia import Material, Layer, Stack
-from stratix import solve, Polarization
+from stratix import solve
 
 air = Material(epsilon=1.0, name="Air")
 mgf2 = Material(epsilon=1.38**2, name="MgF₂")

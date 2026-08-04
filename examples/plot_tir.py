@@ -14,11 +14,13 @@ drops to 0.
 # interface (:math:`n_\text{glass} = 1.52`), computing reflectance and
 # transmittance for TE polarization.
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+from phokaia import Material
+from phokaia import Polarization
+from phokaia import Stack
 
-from phokaia import Material, Stack
-from stratix import solve_angles, Polarization
+from stratix import solve_angles
 
 glass = Material(epsilon=1.52**2, name="Glass")
 air = Material(epsilon=1.0, name="Air")

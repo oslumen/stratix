@@ -12,11 +12,16 @@ photonic stop band.
 # We use 8 pairs (16 layers total) at λ₀ = 550 nm and sweep wavelength
 # to show the stop band.
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+from phokaia import Layer
+from phokaia import Material
+from phokaia import Polarization
+from phokaia import Stack
 
-from phokaia import Material, Layer, Stack
-from stratix import solve, Polarization, compute_field_profile, Method
+from stratix import Method
+from stratix import compute_field_profile
+from stratix import solve
 
 air = Material(epsilon=1.0, name="Air")
 tio2 = Material(epsilon=2.6**2, name="TiO₂")

@@ -15,11 +15,14 @@ solar cells and photodetectors. A quarter-wave layer of Si₃N₄
 #
 # The quarter-wave thickness is d = λ₀/(4n) = 550/(4·2.0) = 68.8 nm.
 
-import numdiff as nd
 import matplotlib.pyplot as plt
+import numdiff as nd
+from phokaia import Layer
+from phokaia import Material
+from phokaia import Polarization
+from phokaia import Stack
 
-from phokaia import Material, Layer, Stack
-from stratix import solve, Polarization
+from stratix import solve
 
 air = Material(epsilon=1.0, name="Air")
 si3n4 = Material(epsilon=2.0**2, name="Si₃N₄")

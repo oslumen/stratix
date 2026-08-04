@@ -10,14 +10,18 @@ and layer thickness enable gradient-based inverse design.
 # %%
 # Setup — materials, stack, and autodiff backend.
 
-import numpy as np
 import matplotlib.pyplot as plt
-
 import numdiff as nd
+import numpy as np
+
 nd.set_backend("jax")
 
-from phokaia import Material, Layer, Stack
-from stratix import Polarization, solve
+from phokaia import Layer  # noqa: E402
+from phokaia import Material  # noqa: E402
+from phokaia import Polarization  # noqa: E402
+from phokaia import Stack  # noqa: E402
+
+from stratix import solve  # noqa: E402
 
 air = Material(epsilon=1.0, name="Air")
 mgf2 = Material(epsilon=1.38**2, name="MgF₂")

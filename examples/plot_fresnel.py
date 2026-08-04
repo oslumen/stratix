@@ -11,11 +11,13 @@ showing the Brewster angle where TM reflectance vanishes.
 # We sweep the incidence angle from 0° to 89.9° and compute reflectance
 # for both TE (s) and TM (p) polarization.
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+from phokaia import Material
+from phokaia import Polarization
+from phokaia import Stack
 
-from phokaia import Material, Stack
-from stratix import solve_angles, Polarization
+from stratix import solve_angles
 
 air = Material(epsilon=1.0, name="Air")
 glass = Material(epsilon=1.52**2, name="Glass")
