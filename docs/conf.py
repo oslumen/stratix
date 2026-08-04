@@ -150,6 +150,7 @@ sphinx_gallery_conf = {
     "examples_dirs": ["../examples", "../benchmarks"],
     "gallery_dirs": ["examples", "benchmarks"],
     "filename_pattern": "/plot_",
+    "ignore_pattern": r"__init__\.py|/_[^/]*\.py|/conftest\.py",
     "remove_config_comments": True,
     "download_all_examples": False,
     "write_computation_times": True,
