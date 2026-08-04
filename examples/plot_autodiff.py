@@ -10,7 +10,6 @@ and layer thickness enable gradient-based inverse design.
 # %%
 # Setup — materials, stack, and autodiff backend.
 
-import jax
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -36,9 +35,10 @@ stack = Stack(
 # %%
 # Gradient w.r.t. wavelength
 # --------------------------
-# dR/dλ across 400–800 nm. The derivative vanishes at the quarter-wave
-# design point (λ₀ = 550 nm, R minimum), so we verify with finite
-# differences at λ = 500 nm where the gradient is well-resolved.
+# dR/dλ across 400–800 nm with finite-difference verification over the
+# full range. Derivatives are scaled to µm\ :sup:`−1`\  .
+
+SCALE = 1e-6
 
 
 def R_vs_wl(wl):
@@ -46,34 +46,42 @@ def R_vs_wl(wl):
 
 
 _grad_wl = nd.grad(R_vs_wl)
-dR_dwl_fn = jax.vmap(_grad_wl)
+dR_dwl_fn = nd.vmap(_grad_wl)
 
-wavelengths = np.linspace(400e-9, 800e-9, 100)
+wavelengths_nm = np.linspace(400, 800, 100)
+wavelengths = wavelengths_nm * 1e-9
 grads_wl_ad = dR_dwl_fn(wavelengths)
 
-# Finite-difference verification at 500 nm (away from the zero-gradient minimum)
-wl_fd = 500e-9
-eps_wl = 1e-9
-R_plus = float(solve(stack, wl_fd + eps_wl, kx=0.0, polarization=Polarization.TE).R[0])
-R_minus = float(solve(stack, wl_fd - eps_wl, kx=0.0, polarization=Polarization.TE).R[0])
-grad_wl_fd = (R_plus - R_minus) / (2 * eps_wl)
-grad_wl_ad = float(_grad_wl(nd.array(wl_fd)))
-relerr_wl = abs(grad_wl_ad - grad_wl_fd) / max(abs(grad_wl_ad), abs(grad_wl_fd))
+# Finite-difference across the full range
+eps_wl = 1e-12
 
-fig, ax = plt.subplots(figsize=(7, 3.5))
-ax.plot(wavelengths * 1e9, grads_wl_ad)
-ax.axhline(0, color="gray", linestyle=":", alpha=0.5)
-ax.axvline(550, color="gray", linestyle=":", alpha=0.5)
-ax.set_xlabel("Wavelength (nm)")
-ax.set_ylabel("dR/dλ (m⁻¹)")
-ax.set_title("dR/dλ — MgF₂ AR coating")
-ax.text(
-    0.98, 0.95,
-    f"λ = 500 nm verification:\nAD = {grad_wl_ad:.4e}\nFD = {grad_wl_fd:.4e}\n"
-    f"rel err = {relerr_wl:.2e}",
-    transform=ax.transAxes, va="top", ha="right",
-    bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+
+def _R_vs_wl_fd(wl):
+    return (R_vs_wl(wl + eps_wl) - R_vs_wl(wl - eps_wl)) / (2 * eps_wl)
+
+
+grads_wl_fd = nd.vmap(_R_vs_wl_fd)(wavelengths)
+
+# Scale to µm⁻¹
+grads_wl_ad_nm = np.asarray(grads_wl_ad * SCALE)
+grads_wl_fd_nm = np.asarray(grads_wl_fd * SCALE)
+relerr_wl = np.abs(grads_wl_ad_nm - grads_wl_fd_nm) / np.maximum(
+    np.abs(grads_wl_ad_nm), np.abs(grads_wl_fd_nm)
 )
+
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7, 5), sharex=True)
+ax1.plot(wavelengths_nm, grads_wl_ad_nm, label="AD")
+ax1.plot(wavelengths_nm, grads_wl_fd_nm, "--", label="FD")
+ax1.axhline(0, color="gray", linestyle=":", alpha=0.5)
+ax1.set_ylabel("dR/dλ (µm⁻¹)")
+ax1.set_title("dR/dλ — MgF₂ AR coating")
+ax1.legend()
+
+ax2.plot(wavelengths_nm, relerr_wl)
+ax2.set_yscale("log")
+ax2.set_ylabel("Rel. error")
+ax2.set_xlabel("Wavelength (nm)")
+
 plt.tight_layout()
 plt.show()
 
@@ -82,9 +90,8 @@ plt.show()
 # -------------------------------
 # dR/dt at the design wavelength as a function of thickness. Pass
 # traced thickness values via the ``thicknesses`` kwarg of ``solve()``.
-# The gradient vanishes at the design thickness (quarter-wave minimum),
-# so FD verification uses a 20 % offset where the gradient is
-# well-resolved.
+# Finite differences verify the full thickness range. Derivatives are
+# scaled to µm\ :sup:`−1`\ .
 
 
 def _R_vs_thickness(t):
@@ -93,38 +100,45 @@ def _R_vs_thickness(t):
         thicknesses=nd.array([t], dtype=nd.float64),
     ).R[0]
 
+
 _grad_t = nd.grad(_R_vs_thickness)
-dR_dt_fn = jax.vmap(_grad_t)
+dR_dt_fn = nd.vmap(_grad_t)
 
 t_vals = np.linspace(thickness * 0.5, thickness * 1.5, 100)
 grads_t_ad = dR_dt_fn(t_vals)
 
-# Finite-difference verification at +20 % thickness
-t_fd = thickness * 1.2
+# Finite-difference across the full range
 eps_t = 1e-12
-t_plus = nd.array([t_fd + eps_t], dtype=nd.float64)
-t_minus = nd.array([t_fd - eps_t], dtype=nd.float64)
-R_plus = float(solve(stack, design_wl, kx=0.0, polarization=Polarization.TE,
-                     thicknesses=t_plus).R[0])
-R_minus = float(solve(stack, design_wl, kx=0.0, polarization=Polarization.TE,
-                      thicknesses=t_minus).R[0])
-grad_t_fd = (R_plus - R_minus) / (2 * eps_t)
-grad_t_ad = float(_grad_t(nd.array(t_fd, dtype=nd.float64)))
-relerr_t = abs(grad_t_ad - grad_t_fd) / max(abs(grad_t_ad), abs(grad_t_fd))
 
-fig, ax = plt.subplots(figsize=(7, 3.5))
-ax.plot(t_vals * 1e9, grads_t_ad)
-ax.axhline(0, color="gray", linestyle=":", alpha=0.5)
-ax.axvline(thickness * 1e9, color="gray", linestyle=":", alpha=0.5)
-ax.set_xlabel("Layer thickness (nm)")
-ax.set_ylabel("dR/dt (m⁻¹)")
-ax.set_title("dR/dt at λ₀ = 550 nm — MgF₂ AR coating")
-ax.text(
-    0.98, 0.95,
-    f"t = {t_fd * 1e9:.1f} nm verification:\nAD = {grad_t_ad:.4e}\n"
-    f"FD = {grad_t_fd:.4e}\nrel err = {relerr_t:.2e}",
-    transform=ax.transAxes, va="top", ha="right",
-    bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+
+def _R_vs_t_fd(t):
+    return (_R_vs_thickness(t + eps_t) - _R_vs_thickness(t - eps_t)) / (2 * eps_t)
+
+
+grads_t_fd = nd.vmap(_R_vs_t_fd)(t_vals)
+
+# Scale to µm⁻¹
+grads_t_ad_nm = np.asarray(grads_t_ad * SCALE)
+grads_t_fd_nm = np.asarray(grads_t_fd * SCALE)
+relerr_t = np.abs(grads_t_ad_nm - grads_t_fd_nm) / np.maximum(
+    np.abs(grads_t_ad_nm), np.abs(grads_t_fd_nm)
 )
+
+t_vals_nm = t_vals * 1e9
+
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7, 5), sharex=True)
+ax1.plot(t_vals_nm, grads_t_ad_nm, label="AD")
+ax1.plot(t_vals_nm, grads_t_fd_nm, "--", label="FD")
+ax1.axhline(0, color="gray", linestyle=":", alpha=0.5)
+ax1.axvline(thickness * 1e9, color="gray", linestyle=":", alpha=0.5)
+ax1.set_ylabel("dR/dt (µm⁻¹)")
+ax1.set_title("dR/dt at λ₀ = 550 nm — MgF₂ AR coating")
+ax1.legend()
+
+ax2.plot(t_vals_nm, relerr_t)
+ax2.set_yscale("log")
+ax2.set_ylabel("Rel. error")
+ax2.set_xlabel("Layer thickness (nm)")
+
 plt.tight_layout()
 plt.show()
