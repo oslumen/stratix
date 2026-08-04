@@ -45,3 +45,4 @@ docs/sg_execution_times.rst
 # Notebooks
 .ipynb_checkpoints/
 
+src/stratix/_version.py
