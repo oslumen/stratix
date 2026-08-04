@@ -1,5 +1,10 @@
 """Sphinx configuration for stratix documentation."""
 
+import multiprocessing as _mp
+
+if _mp.get_start_method(allow_none=True) is None:
+    _mp.set_start_method("spawn")
+
 import os
 import sys
 from importlib.metadata import version as get_version
@@ -76,6 +81,7 @@ html_theme_options = {
     "use_fullscreen_button": True,
     "globaltoc_expand_depth": 1,
     "path_to_docs": "docs",
+    "footer_logo_url": "https://oslu.men",
 }
 
 html_context = {
