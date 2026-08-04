@@ -10,4 +10,4 @@ API Reference
    :toctree: api/
    :recursive:
 
-   stratix
+   stratix.methods

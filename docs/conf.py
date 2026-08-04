@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 project = "stratix"
 release = get_version("stratix")
@@ -150,7 +151,7 @@ sphinx_gallery_conf = {
     "examples_dirs": ["../examples", "../benchmarks"],
     "gallery_dirs": ["examples", "benchmarks"],
     "filename_pattern": "/plot_",
-    "ignore_pattern": r"__init__\.py|/_[^/]*\.py|/conftest\.py",
+    "ignore_pattern": r"^_|^conftest\.py",
     "remove_config_comments": True,
     "download_all_examples": False,
     "write_computation_times": True,
