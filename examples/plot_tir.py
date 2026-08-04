@@ -11,7 +11,7 @@ drops to 0.
 
 # %%
 # We sweep incidence angles across the critical angle of a glass-to-air
-# interface (:math:`n_\\text{glass} = 1.52`), computing reflectance and
+# interface (:math:`n_\text{glass} = 1.52`), computing reflectance and
 # transmittance for TE polarization.
 
 import numpy as np
@@ -32,7 +32,7 @@ te = solve_angles(interface, wavelength, angles, Polarization.TE)
 tm = solve_angles(interface, wavelength, angles, Polarization.TM)
 
 # %%
-# The critical angle is :math:`\\theta_c = \\arcsin(n_2 / n_1)`.
+# The critical angle is :math:`\theta_c = \arcsin(n_2 / n_1)`.
 # Beyond that, :math:`k_z` in air is purely imaginary —
 # the transmitted wave is evanescent, so no energy leaves the interface.
 
@@ -74,7 +74,7 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# For :math:`\\theta > \\theta_c` the transmitted power vanishes
+# For :math:`\theta > \theta_c` the transmitted power vanishes
 # (:math:`T = 0`) and all energy is reflected (:math:`R = 1`).
-# The transition at :math:`\\theta_c` is sharp in the reflectance
+# The transition at :math:`\theta_c` is sharp in the reflectance
 # derivative — a signature of the evanescent cut-off.
