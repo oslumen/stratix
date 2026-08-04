@@ -11,7 +11,7 @@ from phokaia import Material
 from phokaia import Stack
 
 import stratix
-from stratix._types import Polarization
+from phokaia import Polarization
 
 try:
     import tmm  # noqa: F811

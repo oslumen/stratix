@@ -14,7 +14,7 @@
 
 **Stack** (from phokaia) — superstrate Material, ordered Layer list, substrate Material. Immutable Pydantic model.
 
-**Polarization** — `TE` (s-polarized, E-field out of incidence plane) or `TM` (p-polarized, H-field out of incidence plane). `BOTH` computes both in one call.
+**Polarization** (from phokaia) — `TE` (s-polarized, E-field out of incidence plane), `TM` (p-polarized, H-field out of incidence plane), or `BOTH` (compute both in one call). Defined in phokaia as `phokaia.Polarization`.
 
 **Energy balance** — `R + T + Σ(layer_absorption) ≈ 1`. Reflectance + transmittance + per-layer absorption must sum to unity for lossless stacks.
 

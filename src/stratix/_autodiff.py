@@ -8,9 +8,9 @@ autodiff trace.
 from __future__ import annotations
 
 import numdiff as nd
+from phokaia import Polarization
 from phokaia import Stack
 
-from ._types import Polarization
 from .methods._smatrix import _interface_smatrix
 from .methods._smatrix import _kz_single
 from .methods._smatrix import _propagation_smatrix

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from phokaia import Polarization
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 
 from ._types import Method
-from ._types import Polarization
 
 
 class Result(BaseModel):

@@ -11,7 +11,7 @@ from phokaia import Stack
 import stratix
 from stratix._result import Result
 from stratix._types import Method
-from stratix._types import Polarization
+from phokaia import Polarization
 
 
 def _analytical_R_TE(n_inc: complex, n_sub: complex) -> float:

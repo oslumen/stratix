@@ -8,7 +8,7 @@ from phokaia import Layer
 from phokaia import Material
 from phokaia import Stack
 
-from stratix._types import Polarization
+from phokaia import Polarization
 
 
 def _central_fd(f, x, h=1e-8):

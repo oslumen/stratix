@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import numdiff as nd
+from phokaia import Polarization
 from phokaia import Stack
 
-from .._types import Polarization
 from ._util import _safe_R
 from ._util import _safe_T
 

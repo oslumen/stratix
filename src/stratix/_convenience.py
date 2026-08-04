@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import numdiff as nd
 from phokaia import PlaneWave
+from phokaia import Polarization
 from phokaia import Stack
 
 from ._result import Result
 from ._solve import solve
 from ._types import Method
-from ._types import Polarization
 
 _C0: float = 299792458.0  # speed of light in vacuum (m/s)
 

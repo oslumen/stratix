@@ -1,4 +1,4 @@
-"""Enumerations for solver methods and polarizations."""
+"""Solver method selection enum."""
 
 from __future__ import annotations
 
@@ -22,18 +22,3 @@ class Method(StrEnum):
     ADMITTANCE = "admittance"
     DTN = "dtn"
     AUTO = "auto"
-
-
-class Polarization(StrEnum):
-    """Plane-wave polarization.
-
-    Attributes
-    ----------
-    TE : Transverse electric (s-polarized).
-    TM : Transverse magnetic (p-polarized).
-    BOTH : Compute TE and TM simultaneously.
-    """
-
-    TE = "TE"
-    TM = "TM"
-    BOTH = "BOTH"

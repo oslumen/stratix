@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 import numdiff as nd
+from phokaia import Polarization
 from phokaia import Stack
 
 from ._result import Result
 from ._types import Method
-from ._types import Polarization
 from .methods._abeles import _abeles_solve
 from .methods._admittance import _admittance_solve
 from .methods._dtn import _dtn_solve

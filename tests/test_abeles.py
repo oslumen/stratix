@@ -10,7 +10,7 @@ from phokaia import Stack
 
 import stratix
 from stratix._types import Method
-from stratix._types import Polarization
+from phokaia import Polarization
 
 
 @pytest.fixture(params=["numpy", "jax", "torch", "autograd"])

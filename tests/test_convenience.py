@@ -9,7 +9,7 @@ from phokaia import PlaneWave
 from phokaia import Stack
 
 import stratix
-from stratix._types import Polarization
+from phokaia import Polarization
 
 _C0: float = 299792458.0  # speed of light in vacuum (m/s)
 

@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import numdiff as nd
-
-from ._types import Polarization
+from phokaia import Polarization
 
 
 def compute_field_profile(result, z_positions) -> dict:
