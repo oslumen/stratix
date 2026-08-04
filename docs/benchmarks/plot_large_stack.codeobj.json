@@ -1,0 +1,589 @@
+{
+ "METHODS": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "list"
+  }
+ ],
+ "Method.ABELES": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix._types",
+   "module_short": "stratix",
+   "name": "Method"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix",
+   "module_short": "stratix",
+   "name": "Method"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix.Method",
+   "module_short": "stratix.Method",
+   "name": "ABELES"
+  }
+ ],
+ "Method.ADMITTANCE": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix._types",
+   "module_short": "stratix",
+   "name": "Method"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix",
+   "module_short": "stratix",
+   "name": "Method"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix.Method",
+   "module_short": "stratix.Method",
+   "name": "ADMITTANCE"
+  }
+ ],
+ "Method.DTN": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix._types",
+   "module_short": "stratix",
+   "name": "Method"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix",
+   "module_short": "stratix",
+   "name": "Method"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix.Method",
+   "module_short": "stratix.Method",
+   "name": "DTN"
+  }
+ ],
+ "Method.SMATRIX": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix._types",
+   "module_short": "stratix",
+   "name": "Method"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix",
+   "module_short": "stratix",
+   "name": "Method"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix.Method",
+   "module_short": "stratix.Method",
+   "name": "SMATRIX"
+  }
+ ],
+ "Polarization.TE": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phokaia._polarization",
+   "module_short": "phokaia",
+   "name": "Polarization"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phokaia",
+   "module_short": "phokaia",
+   "name": "Polarization"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phokaia.Polarization",
+   "module_short": "phokaia.Polarization",
+   "name": "TE"
+  }
+ ],
+ "_": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix._result",
+   "module_short": "stratix",
+   "name": "Result"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix",
+   "module_short": "stratix",
+   "name": "Result"
+  }
+ ],
+ "_tmm_available": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "benchmarks._tmm",
+   "module_short": "benchmarks._tmm",
+   "name": "_tmm_available"
+  }
+ ],
+ "available_backends": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "benchmarks._backends",
+   "module_short": "benchmarks._backends",
+   "name": "available_backends"
+  }
+ ],
+ "b": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "str"
+  }
+ ],
+ "backend_mems": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "dict"
+  }
+ ],
+ "backend_scope": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "benchmarks._backends",
+   "module_short": "benchmarks._backends",
+   "name": "backend_scope"
+  }
+ ],
+ "backend_times": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "dict"
+  }
+ ],
+ "backends": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "list"
+  }
+ ],
+ "bar_chart_compare": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "benchmarks._plotting",
+   "module_short": "benchmarks._plotting",
+   "name": "bar_chart_compare"
+  }
+ ],
+ "cmp": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "dict"
+  }
+ ],
+ "gpu_backends": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "list"
+  }
+ ],
+ "gpu_cpu": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "dict"
+  }
+ ],
+ "gpu_gpu": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "dict"
+  }
+ ],
+ "heatmap": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "benchmarks._plotting",
+   "module_short": "benchmarks._plotting",
+   "name": "heatmap"
+  }
+ ],
+ "heatmap_data": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "list"
+  }
+ ],
+ "heatmap_data.append": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "builtin_function_or_method"
+  }
+ ],
+ "jit_backends": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "list"
+  }
+ ],
+ "jit_hot": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "dict"
+  }
+ ],
+ "kx_vals": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "ndarray"
+  }
+ ],
+ "large_stack": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "benchmarks._stacks",
+   "module_short": "benchmarks._stacks",
+   "name": "large_stack"
+  }
+ ],
+ "m": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix._types",
+   "module_short": "stratix",
+   "name": "Method"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix",
+   "module_short": "stratix",
+   "name": "Method"
+  }
+ ],
+ "m.value": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "str"
+  }
+ ],
+ "measure_memory": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "benchmarks._timing",
+   "module_short": "benchmarks._timing",
+   "name": "measure_memory"
+  }
+ ],
+ "method_names": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "list"
+  }
+ ],
+ "method_times": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "dict"
+  }
+ ],
+ "nd.HAS_CUDA": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "bool"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numdiff",
+   "module_short": "numdiff",
+   "name": "HAS_CUDA"
+  }
+ ],
+ "nd.linspace": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numdiff",
+   "module_short": "numdiff",
+   "name": "linspace"
+  }
+ ],
+ "row": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "list"
+  }
+ ],
+ "row.append": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "builtin_function_or_method"
+  }
+ ],
+ "solve": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "stratix",
+   "module_short": "stratix",
+   "name": "solve"
+  }
+ ],
+ "stack": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phokaia.layer",
+   "module_short": "phokaia",
+   "name": "Stack"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phokaia",
+   "module_short": "phokaia",
+   "name": "Stack"
+  }
+ ],
+ "summary_table": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "benchmarks._plotting",
+   "module_short": "benchmarks._plotting",
+   "name": "summary_table"
+  }
+ ],
+ "t": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "dict"
+  }
+ ],
+ "t_cpu": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "dict"
+  }
+ ],
+ "t_gpu": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "dict"
+  }
+ ],
+ "t_hot": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "dict"
+  }
+ ],
+ "time_solve": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "benchmarks._timing",
+   "module_short": "benchmarks._timing",
+   "name": "time_solve"
+  }
+ ],
+ "tmm_compare": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "benchmarks._tmm",
+   "module_short": "benchmarks._tmm",
+   "name": "tmm_compare"
+  }
+ ],
+ "wavelengths": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "ndarray"
+  }
+ ]
+}
