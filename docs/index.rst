@@ -48,6 +48,12 @@
     examples/index
 
 .. toctree::
+    :caption: Benchmarks
+    :hidden:
+
+    benchmarks/index
+
+.. toctree::
     :caption: API
     :hidden:
 

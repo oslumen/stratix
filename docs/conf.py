@@ -147,8 +147,8 @@ intersphinx_mapping = {
 
 _basedir = Path(__file__).parent
 sphinx_gallery_conf = {
-    "examples_dirs": "../examples",
-    "gallery_dirs": "examples",
+    "examples_dirs": ["../examples", "../benchmarks"],
+    "gallery_dirs": ["examples", "benchmarks"],
     "filename_pattern": "/plot_",
     "remove_config_comments": True,
     "download_all_examples": False,
