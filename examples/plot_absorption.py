@@ -43,7 +43,7 @@ for wl in wavelengths:
 wl_nm = wavelengths * 1e9
 
 # %%
-# The gold layer absorbs ~50% of the incident power around 500 nm.
+# The gold layer absorbs ~33% of the incident power around 500 nm.
 # The energy balance R + T + A stays at 1.0 to machine precision,
 # confirming conservation.
 

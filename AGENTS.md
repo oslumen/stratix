@@ -1,5 +1,12 @@
 # AGENTS.md — stratix
 
+
+## Python
+
+Use uv and the virtualenv at the root of the repository. Install the full version `uv pip install -e .[all-gpu]` to have torch and jax. 
+
+Use tdd skill, atomic commits when finished and close related issue when done if needed.
+
 ## Hard rules
 
 - **numdiff for all math.** `stratix` never imports `numpy`, `scipy`, `jax`, or `torch` directly for array operations. All linear algebra, special functions, autodiff, and JIT go through `numdiff` (`nd.linalg`, `nd.special`, `nd.grad`, `nd.jit`).

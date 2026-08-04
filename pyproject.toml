@@ -24,7 +24,6 @@ classifiers = [
 dependencies = [
   "loguru>=0.7",
   "phokaia",
-  "phokaia",
 ]
 
 
@@ -37,7 +36,7 @@ Homepage = "https://github.com/oslumen/stratix"
 Repository = "https://github.com/oslumen/stratix"
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-cov", "ruff", "mypy", "pre-commit"]
+dev = ["pytest", "pytest-cov", "ruff", "mypy", "pre-commit", "tmm"]
 docs = [
   "sphinx>=7.4",
   # "shibuya",
