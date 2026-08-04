@@ -19,7 +19,9 @@ def test_version_is_string() -> None:
 
 def test_about_metadata() -> None:
     """Package metadata tuple is populated."""
-    from stratix.__about__ import __author__, __description__, __license__
+    from stratix.__about__ import __author__
+    from stratix.__about__ import __description__
+    from stratix.__about__ import __license__
 
     assert isinstance(__author__, str) and len(__author__) > 0
     assert isinstance(__description__, str) and len(__description__) > 0
@@ -28,7 +30,7 @@ def test_about_metadata() -> None:
 
 def test_logger_import() -> None:
     """Logging module is accessible."""
-    from stratix.log import logger, set_log_level  # noqa: F811
+    from stratix.log import logger
 
     assert logger is not None
 

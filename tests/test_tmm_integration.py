@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
-import numpy as np
-
 import numdiff as nd
+import numpy as np
 import pytest
 from phokaia import Layer
 from phokaia import Material
+from phokaia import Polarization
 from phokaia import Stack
 
 import stratix
-from phokaia import Polarization
 
 try:
-    import tmm  # noqa: F811
+    import tmm
 
     HAS_TMM = True
 except ImportError:

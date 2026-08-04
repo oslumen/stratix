@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
+import numdiff as nd
 import pytest
-
-import stratix
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -16,6 +15,25 @@ def pytest_configure(config: pytest.Config) -> None:
 def sample_data() -> dict[str, float]:
     """Provide sample numeric data for tests."""
     return {"x": 1.0, "y": 2.0, "z": 3.0}
+
+
+@pytest.fixture(params=["numpy", "jax", "torch", "autograd"])
+def set_backend(request):
+    backend = request.param
+    if not getattr(nd, f"HAS_{backend.upper()}", False):
+        pytest.skip(f"Backend {backend!r} not available")
+    old = nd.get_backend()
+    nd.set_backend(backend)
+    if backend == "torch":
+        import torch
+
+        torch.set_default_dtype(torch.float64)
+    if backend == "jax":
+        import jax
+
+        jax.config.update("jax_enable_x64", True)
+    yield backend
+    nd.set_backend(old)
 
 
 

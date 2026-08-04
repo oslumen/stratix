@@ -6,20 +6,9 @@ import numdiff as nd
 from phokaia import Polarization
 from phokaia import Stack
 
+from ._medium_params import _medium_params
 from ._util import _safe_R
 from ._util import _safe_T
-
-
-def _kz_single(epsilon: nd.ndarray, mu: nd.ndarray, k0: float, kx: float) -> nd.ndarray:
-    """Compute the out-of-plane wavevector component kz.
-
-    Chooses the physical branch: Im(kz) >= 0, or Re(kz) >= 0 when Im(kz) = 0.
-    """
-    kz_sq = epsilon * mu * k0**2 - kx**2
-    kz_sq = kz_sq + 0j
-    kz = nd.sqrt(kz_sq)
-    neg = (nd.imag(kz) < 0) | ((nd.imag(kz) == 0) & (nd.real(kz) < 0))
-    return nd.where(neg, -kz, kz)
 
 
 def _redheffer_star(S_A: nd.ndarray, S_B: nd.ndarray) -> nd.ndarray:
@@ -113,29 +102,11 @@ def _smatrix_solve(
     T : Power transmittance (0-D ndarray).
     intermediates : Dict of S-matrix data needed for field reconstruction.
     """
-    c = 299792458.0
-    omega = 2 * nd.pi * c / wavelength
-    k0 = 2 * nd.pi / wavelength
-
-    media = (
-        [stack.superstrate]
-        + [layer.material for layer in stack.layers]
-        + [stack.substrate]
+    _omega, _k0, kzs, _, _, denom_vals = _medium_params(
+        stack, wavelength, kx, polarization
     )
-    epsilons = [m.epsilon(omega=omega) for m in media]
-    mus = [m.mu(omega=omega) for m in media]
-    kzs = [_kz_single(eps, mu, k0, kx) for eps, mu in zip(epsilons, mus, strict=True)]
-
-    if polarization == Polarization.TE:
-        denom_vals = mus
-    elif polarization == Polarization.TM:
-        denom_vals = epsilons
-    else:
-        raise NotImplementedError(f"Polarization {polarization!r} not supported")
-
     Zs = [kz / denom for kz, denom in zip(kzs, denom_vals, strict=True)]
-
-    n_interfaces = len(media) - 1
+    n_interfaces = len(kzs) - 1
 
     kz0, denom0 = kzs[0], denom_vals[0]
 

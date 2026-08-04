@@ -12,7 +12,7 @@ import numdiff as nd
 from phokaia import Polarization
 from phokaia import Stack
 
-from ._smatrix import _kz_single
+from ._medium_params import _medium_params
 from ._util import _safe_R
 from ._util import _safe_T
 
@@ -20,26 +20,9 @@ from ._util import _safe_T
 def _abeles_solve(
     stack: Stack, wavelength: float, kx: float, polarization: Polarization
 ) -> tuple[nd.ndarray, nd.ndarray, dict]:
-    c = 299792458.0
-    omega = 2 * nd.pi * c / wavelength
-    k0 = 2 * nd.pi / wavelength
-
-    media = (
-        [stack.superstrate]
-        + [layer.material for layer in stack.layers]
-        + [stack.substrate]
+    _omega, _k0, kzs, _, _, denom_vals = _medium_params(
+        stack, wavelength, kx, polarization
     )
-    epsilons = [m.epsilon(omega=omega) for m in media]
-    mus = [m.mu(omega=omega) for m in media]
-    kzs = [_kz_single(eps, mu, k0, kx) for eps, mu in zip(epsilons, mus, strict=True)]
-
-    if polarization == Polarization.TE:
-        denom_vals = mus
-    elif polarization == Polarization.TM:
-        denom_vals = epsilons
-    else:
-        raise NotImplementedError(f"Polarization {polarization!r} not supported")
-
     Zs = [kz / denom for kz, denom in zip(kzs, denom_vals, strict=True)]
     Z_0 = Zs[0]
     Z_s = Zs[-1]
