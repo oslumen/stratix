@@ -44,8 +44,9 @@ def _medium_params(
     denom_vals : List of 0-D ndarrays — mus for TE, epsilons for TM.
     """
     c = 299792458.0
-    omega = 2 * nd.pi * c / wavelength
-    k0 = 2 * nd.pi / wavelength
+    omega = nd.array(2 * nd.pi * c / wavelength)
+    k0 = nd.array(2 * nd.pi / wavelength)
+    kx = nd.array(kx)
 
     media = (
         [stack.superstrate]

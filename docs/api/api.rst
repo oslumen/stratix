@@ -5,9 +5,3 @@ API Reference
    :members:
    :undoc-members:
    :show-inheritance:
-
-.. autosummary::
-   :toctree: api/
-   :recursive:
-
-   stratix.methods

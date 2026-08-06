@@ -146,6 +146,23 @@ intersphinx_mapping = {
     "numpy": ("https://numpy.org/devdocs/", None),
 }
 
+def _add_toctree_caption(app, docname, source):
+    _captions = {
+        "examples/index": "Examples",
+        "benchmarks/index": "Benchmarks",
+    }
+    if docname not in _captions:
+        return
+    source[0] = source[0].replace(
+        ".. toctree::\n   :hidden:\n",
+        f".. toctree::\n   :hidden:\n   :caption: {_captions[docname]}\n",
+    )
+
+
+def setup(app):
+    app.connect("source-read", _add_toctree_caption)
+
+
 _basedir = Path(__file__).parent
 sphinx_gallery_conf = {
     "examples_dirs": ["../examples", "../benchmarks"],

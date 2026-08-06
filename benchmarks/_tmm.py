@@ -103,8 +103,8 @@ def tmm_compare(
         polarization=polarization,
         method=method,
     )
-    R_stratix = float(nd.array(result.R).flat[0])
-    T_stratix = float(nd.array(result.T).flat[0])
+    R_stratix = float(nd.array(result.R).flatten()[0])
+    T_stratix = float(nd.array(result.T).flatten()[0])
 
     R_tmm, T_tmm = tmm_reference(stack, wavelength, kx=kx, polarization=polarization)
 

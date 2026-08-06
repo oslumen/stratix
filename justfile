@@ -48,23 +48,27 @@ lint-install:
     {{ pre-commit }} install
 
 
-# Build Sphinx HTML docs
-docs:
-    {{ sphinx-build }} -E docs/ docs/_build/html
+# Build Sphinx HTML docs (--fast to skip gallery)
+[arg("fast", long, value="-D plot_gallery=0")]
+docs fast="" *sphinx_flags:
+    {{ sphinx-build }} {{fast}} {{sphinx_flags}} -E docs/ docs/_build/html
 
 
-# live-reload sphinx docs on file changes
-docs-live host="127.0.0.1" port="8001":
-    {{venv}} sphinx-autobuild --host {{host}} --port {{port}} \
+# live-reload sphinx docs on file changes (--fast to skip gallery)
+[arg("fast", long, value="-D plot_gallery=0")]
+docs-live host="127.0.0.1" port="8001" fast="" *sphinx_flags:
+    {{venv}} sphinx-autobuild {{fast}} {{sphinx_flags}} --host {{host}} --port {{port}} \
         --watch src/  \
         --watch examples/  \
+        --watch benchmarks/  \
         --ignore "docs/examples*" \
+        --ignore "docs/benchmarks*" \
         --ignore "*sg_execution_times*" \
         docs/ docs/_build/html
 
 # Clean Sphinx docs
 docs-clean:
-    rm -rf docs/_build docs/examples
+    rm -rf docs/_build docs/examples docs/benchmarks docs/api/api docs/sg_execution_times.rst
 
 
 # Clean generated directories and files

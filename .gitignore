@@ -40,6 +40,7 @@ Thumbs.db
 _build/
 docs/_build/
 docs/examples/
+docs/benchmarks/
 docs/sg_execution_times.rst
 
 # Notebooks
