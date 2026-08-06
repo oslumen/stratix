@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import timeit
 import tracemalloc
+from collections.abc import Callable
 from typing import Any
 
 import numdiff as nd
@@ -21,8 +22,9 @@ def time_solve(
     polarization: Polarization = Polarization.TE,
     method: Method = Method.AUTO,
     n_repeats: int = 10,
+    solver: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
-    """Measure execution time of :func:`stratix.solve`.
+    """Measure execution time of a solve function.
 
     Parameters
     ----------
@@ -38,6 +40,9 @@ def time_solve(
         Solver method. Default ``AUTO`` (resolves to ``SMATRIX``).
     n_repeats : int
         Number of timing repetitions. Default ``10``.
+    solver : callable, optional
+        Solve function to benchmark. Default ``stratix.solve``.
+        Pass ``nd.jit(solve)`` to measure JIT-compiled performance.
 
     Returns
     -------
@@ -45,6 +50,7 @@ def time_solve(
         Keys: ``mean``, ``std``, ``min``, ``max``, ``times`` (list of
         per-repeat times in seconds).
     """
+    _solver = solve if solver is None else solver
     params: dict[str, Any] = {
         "stack": stack,
         "wavelength": wavelength,
@@ -52,8 +58,8 @@ def time_solve(
         "polarization": polarization,
         "method": method,
     }
-    solve(**params)
-    timer = timeit.Timer(lambda: solve(**params))
+    _solver(**params)
+    timer = timeit.Timer(lambda: _solver(**params))
     times = timer.repeat(repeat=n_repeats, number=1)
     return {
         "mean": float(nd.mean(nd.array(times))),

@@ -19,9 +19,6 @@ import matplotlib.pyplot as plt
 import numdiff as nd
 from phokaia import Polarization
 
-from stratix import Method
-from stratix import solve
-
 from benchmarks._backends import available_backends
 from benchmarks._backends import backend_scope
 from benchmarks._plotting import bar_chart_compare
@@ -31,6 +28,7 @@ from benchmarks._stacks import medium_stack
 from benchmarks._stacks import single_stack
 from benchmarks._stacks import small_stack
 from benchmarks._timing import time_solve
+from stratix import Method
 
 stacks = {
     "bare": single_stack(),
@@ -112,7 +110,7 @@ with backend_scope(default_backend):
                 s, wavelengths, kx=kx_vals, polarization=Polarization.TE,
                 method=m,
             )
-            method_scaling[m.value][label] = t["mean"]
+            method_scaling[m.value][label] = t["min"]
 
 fig, ax = plt.subplots(figsize=(7, 4))
 for mn in [m.value for m in METHODS]:
@@ -142,7 +140,7 @@ for b in backends:
                 s, wavelengths, kx=kx_vals, polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
-            scaling[b][label] = t["mean"]
+            scaling[b][label] = t["min"]
 
 table_cols = ["stack"] + list(canonical)
 table_data: dict[str, list[str]] = {"stack": list(stacks.keys())}
@@ -187,12 +185,14 @@ bar_chart_compare(
 #
 # The vectorised-vs-scalar comparison shows that batched sweeps
 # amortise overhead — a 50×50 sweep (2500 evaluation points) costs far
-# less than 2500 individual scalar calls.  JIT backends (when
-# available) amplify this advantage further because compilation cost
-# is paid once for the entire sweep.
+# less than 2500 individual scalar calls.  JIT compilation (opt-in via
+# ``nd.jit(solve)``) amplifies this advantage further because compile
+# cost is paid once for the entire sweep.
 #
 # The default NumPy backend shows the most predictable scaling since
-# there is no JIT compilation overhead.
+# there is no JIT compilation overhead.  For JAX and PyTorch, apply
+# ``nd.jit(solve)`` explicitly when sweeping; the warm-up call alone
+# (without JIT) only removes first-call overhead from eager mode.
 
 print(f"Default backend: {default_backend}")
 print(f"Available: {backends}")

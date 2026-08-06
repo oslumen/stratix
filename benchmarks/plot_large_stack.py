@@ -13,12 +13,8 @@ methods and backends.
 # Eight-layer stack with indices 1.5–3.5 and thicknesses 1–10 µm.
 # 50 wavelengths (400–800 nm) × 50 kx values (0–1e7 rad/m).
 
-import matplotlib.pyplot as plt
 import numdiff as nd
 from phokaia import Polarization
-
-from stratix import Method
-from stratix import solve
 
 from benchmarks._backends import available_backends
 from benchmarks._backends import backend_scope
@@ -26,11 +22,12 @@ from benchmarks._plotting import bar_chart_compare
 from benchmarks._plotting import heatmap
 from benchmarks._plotting import summary_table
 from benchmarks._stacks import large_stack
-from benchmarks._timing import check_correctness
 from benchmarks._timing import measure_memory
 from benchmarks._timing import time_solve
 from benchmarks._tmm import _tmm_available
 from benchmarks._tmm import tmm_compare
+from stratix import Method
+from stratix import solve
 
 stack = large_stack()
 wavelengths = nd.linspace(400e-9, 800e-9, 50)
@@ -56,11 +53,11 @@ for b in backends:
             stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
             method=Method.SMATRIX,
         )
-    backend_times[b] = t["mean"]
+    backend_times[b] = t["min"]
     backend_mems[b] = m["peak_delta_mb"]
 
 bar_chart_compare(
-    {"mean time (s)": [backend_times[b] for b in backends]},
+    {"min time (s)": [backend_times[b] for b in backends]},
     backends,
     title="Backend comparison — SMATRIX, 8-film 50×50 sweep",
     ylabel="Solve time (s)",
@@ -86,11 +83,11 @@ with backend_scope("numpy"):
         t = time_solve(
             stack, wavelengths, kx=kx_vals, polarization=Polarization.TE, method=m
         )
-        method_times[m.value] = t["mean"]
+        method_times[m.value] = t["min"]
 
 method_names = [m.value for m in METHODS]
 bar_chart_compare(
-    {"mean time (s)": [method_times[n] for n in method_names]},
+    {"min time (s)": [method_times[n] for n in method_names]},
     method_names,
     title="Method comparison — NumPy backend, 8-film 50×50 sweep",
     ylabel="Solve time (s)",
@@ -118,7 +115,7 @@ for m in METHODS:
                 stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
                 method=m,
             )
-        row.append(t["mean"])
+        row.append(t["min"])
     heatmap_data.append(row)
 
 heatmap(
@@ -129,28 +126,65 @@ heatmap(
 )
 
 # %%
-# 4. JIT acceleration
-# -------------------
+# 4. User-side JIT
+# ----------------
+# JIT is opt-in — apply ``nd.jit(solve)`` for sweep workloads where
+# compile cost amortizes over many evaluation points.  Single-point
+# solves are better served by eager mode (warm-up excluded).  This
+# section compares NumPy (eager baseline), JAX/Torch eager, and
+# JIT-compiled timing side by side.
+#
+# The JIT call is made once outside the timing loop; the warm-up call
+# triggers tracing and compilation so the measured repeats reflect
+# steady-state compiled performance.
 
 jit_backends = [b for b in ("jax", "torch") if b in backends]
 if jit_backends:
-    jit_hot: dict[str, float] = {}
+    with backend_scope("numpy"):
+        _ = solve(
+            stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+            method=Method.SMATRIX,
+        )
+        t_numpy = time_solve(
+            stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+            method=Method.SMATRIX,
+        )
+
+    jit_eager: dict[str, float] = {}
+    jit_compiled: dict[str, float] = {}
     for b in jit_backends:
         with backend_scope(b):
             _ = solve(
                 stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
-            t_hot = time_solve(
+            t_eager = time_solve(
                 stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
-        jit_hot[b] = t_hot["mean"]
+            jit_solve = nd.jit(solve)
+            _ = jit_solve(
+                stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+                method=Method.SMATRIX,
+            )
+            t_compiled = time_solve(
+                stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+                method=Method.SMATRIX,
+                solver=jit_solve,
+            )
+        jit_eager[b] = t_eager["min"]
+        jit_compiled[b] = t_compiled["min"]
 
+    numpy_eager = t_numpy["min"]
+    chart_backends = ["numpy"] + jit_backends
     bar_chart_compare(
-        {"steady-state (warm-up excluded)": [jit_hot[b] for b in jit_backends]},
-        jit_backends,
-        title="JIT steady-state — SMATRIX, 8-film 50×50 sweep",
+        {
+            "numpy (eager)": [numpy_eager] + [0.0] * len(jit_backends),
+            "eager (warm-up)": [0.0] + [jit_eager[b] for b in jit_backends],
+            "jit-compiled": [0.0] + [jit_compiled[b] for b in jit_backends],
+        },
+        chart_backends,
+        title="User-side JIT — SMATRIX, 8-film 50×50 sweep",
         ylabel="Solve time (s)",
     )
 else:

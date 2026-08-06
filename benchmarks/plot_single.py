@@ -4,7 +4,7 @@ Scalar single-point benchmark
 
 Single wavelength and single kx value with a 1-film lossless stack.
 Establishes the six-subsection pattern used by all benchmark files:
-backend comparison, method comparison, heatmap, JIT acceleration,
+backend comparison, method comparison, heatmap, steady-state timing,
 GPU (when available), and tmm cross-check.
 """
 
@@ -14,12 +14,8 @@ GPU (when available), and tmm cross-check.
 # We use a 1 µm air / high-index (n=3.5) / air stack at normal incidence
 # (kx=0) with a single vacuum wavelength of 500 nm in the visible.
 
-import matplotlib.pyplot as plt
 import numdiff as nd
 from phokaia import Polarization
-
-from stratix import Method
-from stratix import solve
 
 from benchmarks._backends import available_backends
 from benchmarks._backends import backend_scope
@@ -27,11 +23,12 @@ from benchmarks._plotting import bar_chart_compare
 from benchmarks._plotting import heatmap
 from benchmarks._plotting import summary_table
 from benchmarks._stacks import small_stack
-from benchmarks._timing import check_correctness
 from benchmarks._timing import measure_memory
 from benchmarks._timing import time_solve
 from benchmarks._tmm import _tmm_available
 from benchmarks._tmm import tmm_compare
+from stratix import Method
+from stratix import solve
 
 stack = small_stack()
 wavelength = 500e-9
@@ -43,7 +40,7 @@ METHODS = [Method.SMATRIX, Method.ABELES, Method.ADMITTANCE, Method.DTN]
 # 1. Backend comparison
 # ---------------------
 # All available backends, fixed method=SMATRIX.  Timing is measured with
-# 10 repeats; the bar chart shows mean solve time and the summary table
+# 10 repeats; the bar chart shows min solve time and the summary table
 # adds memory peak delta.
 
 backends = available_backends()
@@ -60,11 +57,11 @@ for b in backends:
             stack, wavelength, kx=kx, polarization=Polarization.TE,
             method=Method.SMATRIX,
         )
-    backend_times[b] = t["mean"]
+    backend_times[b] = t["min"]
     backend_mems[b] = m["peak_delta_mb"]
 
 bar_chart_compare(
-    {"mean time (s)": [backend_times[b] for b in backends]},
+    {"min time (s)": [backend_times[b] for b in backends]},
     backends,
     title="Backend comparison — SMATRIX, 1-film stack",
     ylabel="Solve time (s)",
@@ -93,11 +90,11 @@ with backend_scope("numpy"):
         t = time_solve(
             stack, wavelength, kx=kx, polarization=Polarization.TE, method=m
         )
-        method_times[m.value] = t["mean"]
+        method_times[m.value] = t["min"]
 
 method_names = [m.value for m in METHODS]
 bar_chart_compare(
-    {"mean time (s)": [method_times[n] for n in method_names]},
+    {"min time (s)": [method_times[n] for n in method_names]},
     method_names,
     title="Method comparison — NumPy backend, 1-film stack",
     ylabel="Solve time (s)",
@@ -125,7 +122,7 @@ for m in METHODS:
             t = time_solve(
                 stack, wavelength, kx=kx, polarization=Polarization.TE, method=m
             )
-        row.append(t["mean"])
+        row.append(t["min"])
     heatmap_data.append(row)
 
 heatmap(
@@ -136,35 +133,35 @@ heatmap(
 )
 
 # %%
-# 4. JIT acceleration
-# -------------------
-# JAX and PyTorch both JIT-compile on first call.  The warm-up call is
-# excluded from timing so the bars reflect steady-state solve
-# performance after compilation.
+# 4. Steady-state (warm-up excluded)
+# ---------------------------------
+# Eager-mode solve timing with a warm-up call to exclude first-call
+# overhead (tracing, memory allocation).  JIT is opt-in — apply
+# ``nd.jit(solve)`` for compiled performance on sweep workloads.
 
-jit_backends = [b for b in ("jax", "torch") if b in backends]
-if jit_backends:
-    jit_hot: dict[str, float] = {}
-    for b in jit_backends:
+steady_backends = [b for b in ("jax", "torch") if b in backends]
+if steady_backends:
+    steady_times: dict[str, float] = {}
+    for b in steady_backends:
         with backend_scope(b):
             _ = solve(
                 stack, wavelength, kx=kx, polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
-            t_hot = time_solve(
+            t_steady = time_solve(
                 stack, wavelength, kx=kx, polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
-        jit_hot[b] = t_hot["mean"]
+        steady_times[b] = t_steady["min"]
 
     bar_chart_compare(
-        {"steady-state (warm-up excluded)": [jit_hot[b] for b in jit_backends]},
-        jit_backends,
-        title="JIT steady-state — SMATRIX, 1-film stack",
+        {"steady-state (warm-up excluded)": [steady_times[b] for b in steady_backends]},
+        steady_backends,
+        title="Steady-state (warm-up excluded) — SMATRIX, 1-film stack",
         ylabel="Solve time (s)",
     )
 else:
-    print("JIT backends (jax, torch) not available — skipping JIT section.")
+    print("JIT backends (jax, torch) not available — skipping steady-state section.")
 
 # %%
 # 5. GPU acceleration

@@ -15,6 +15,6 @@ All array operations go through `numdiff` (`nd.linalg`, `nd.special`, `nd.grad`,
 ## Consequences
 
 - Single codebase supports numpy, jax, torch, and autograd without conditional branches.
-- Users get autodiff, JIT, and GPU acceleration transparently via numdiff backend switching.
+- Users get autodiff and GPU acceleration transparently via numdiff backend switching. JIT compilation is opt-in — users apply ``nd.jit(...)`` explicitly. This resolves to eager evaluation by default and does not block tracing when the result type is jit-compatible.
 - Complex numbers must be constructed with `nd.array(complex_value)` — direct Python complex literals in array expressions break under certain backends.
 - Reference values for tests validated against numpy backend; other backends validated for consistency (same results, different backends).
