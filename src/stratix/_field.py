@@ -27,7 +27,7 @@ def compute_field_profile(result, z_positions) -> dict:
         ``E`` = Ex (tangential electric field).
         ``H`` = Hy (tangential magnetic field).
     """
-    intr = result._intermediates
+    intr = result.intermediates
     if not intr:
         raise ValueError(
             "No field intermediates in Result; smatrix solver was not used."

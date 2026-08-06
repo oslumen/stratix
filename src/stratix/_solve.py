@@ -84,8 +84,8 @@ def solve(
             method_used=res_te.method_used,
             layer_absorption=layer_abs,
             energy_balance=energy_bal,
+            intermediates=res_te.intermediates,
         )
-        result._set_intermediates(res_te._intermediates)
         return result
 
     wl_arr = wavelength if hasattr(wavelength, 'ndim') else nd.asarray(wavelength)
@@ -116,8 +116,8 @@ def solve(
             method_used=resolved,
             layer_absorption=layer_abs,
             energy_balance=energy_bal,
+            intermediates=intermediates,
         )
-        result._set_intermediates(intermediates)
         return result
 
     wl_is_arr = wl_arr.ndim > 0
@@ -145,5 +145,4 @@ def solve(
         polarization=polarization,
         method_used=resolved,
     )
-    result._set_intermediates({})
     return result

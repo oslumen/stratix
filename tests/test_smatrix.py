@@ -120,8 +120,8 @@ class TestSingleInterfaceTE:
         )
         assert result.method_used == Method.SMATRIX
 
-    def test_result_is_pydantic_model(self, set_backend):
-        """Result is a Pydantic BaseModel."""
+    def test_result_fields(self, set_backend):
+        """Result is a NamedTuple with expected fields."""
         stack = Stack(
             superstrate=Material(epsilon=1.0),
             substrate=Material(epsilon=2.25),

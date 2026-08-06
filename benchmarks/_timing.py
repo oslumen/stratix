@@ -52,6 +52,7 @@ def time_solve(
         "polarization": polarization,
         "method": method,
     }
+    solve(**params)
     timer = timeit.Timer(lambda: solve(**params))
     times = timer.repeat(repeat=n_repeats, number=1)
     return {
