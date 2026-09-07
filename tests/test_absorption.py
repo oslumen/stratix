@@ -330,6 +330,152 @@ class TestAbsorptionAttribution:
             assert abs(float(a)) < 1e-12
 
 
+def _lossy_bilayer():
+    n_lossy = 0.5 + 1j
+    return Stack(
+        superstrate=Material(epsilon=1.0),
+        substrate=Material(epsilon=2.25),
+        layers=[
+            Layer(thickness=80e-9, material=Material(epsilon=1.38**2)),
+            Layer(thickness=40e-9, material=Material(epsilon=n_lossy**2)),
+        ],
+    )
+
+
+class TestAbsorptionSweeps:
+    """absorption=True across array inputs and BOTH — Issue #49."""
+
+    def test_wavelength_array(self, set_backend):
+        stack = _lossy_bilayer()
+        wavelengths = nd.array([4e-7, 5e-7, 6e-7, 7e-7])
+        result = stratix.solve(
+            stack, wavelengths, kx=0.0, polarization=Polarization.TE,
+            absorption=True,
+        )
+
+        assert result.layer_absorption is not None
+        assert result.layer_absorption.shape == (2, 4)
+        assert result.energy_balance.shape == result.R.shape == (4,)
+        for i in range(4):
+            assert abs(float(result.energy_balance[i]) - 1.0) < 1e-10
+
+    def test_wavelength_array_matches_scalar(self, set_backend):
+        stack = _lossy_bilayer()
+        wl_list = [4e-7, 5e-7, 6e-7]
+        swept = stratix.solve(
+            stack, nd.array(wl_list), kx=0.0, polarization=Polarization.TE,
+            absorption=True,
+        )
+        for i, wl in enumerate(wl_list):
+            single = stratix.solve(
+                stack, wl, kx=0.0, polarization=Polarization.TE, absorption=True,
+            )
+            for layer in range(2):
+                assert abs(
+                    float(swept.layer_absorption[layer][i])
+                    - float(single.layer_absorption[layer])
+                ) < 1e-12
+
+    def test_kx_array(self, set_backend):
+        stack = _lossy_bilayer()
+        kx = nd.array([0.0, 2e6, 5e6])
+        result = stratix.solve(
+            stack, 5e-7, kx=kx, polarization=Polarization.TE, absorption=True,
+        )
+        assert result.layer_absorption.shape == (2, 3)
+        assert result.energy_balance.shape == (3,)
+
+    def test_two_dimensional_sweep(self, set_backend):
+        stack = _lossy_bilayer()
+        wavelengths = nd.array([4e-7, 5e-7, 6e-7])
+        kx = nd.array([0.0, 2e6])
+        result = stratix.solve(
+            stack, wavelengths, kx=kx, polarization=Polarization.TE,
+            absorption=True,
+        )
+        assert result.R.shape == (3, 2)
+        assert result.layer_absorption.shape == (2, 3, 2)
+        assert result.energy_balance.shape == (3, 2)
+        for i in range(3):
+            for j in range(2):
+                assert abs(float(result.energy_balance[i][j]) - 1.0) < 1e-10
+
+    def test_sum_matches_one_minus_r_minus_t_on_grid(self, set_backend):
+        stack = _lossy_bilayer()
+        wavelengths = nd.array([4.5e-7, 6.5e-7])
+        kx = nd.array([0.0, 3e6])
+        result = stratix.solve(
+            stack, wavelengths, kx=kx, polarization=Polarization.TE,
+            absorption=True,
+        )
+        for i in range(2):
+            for j in range(2):
+                total = 1.0 - float(result.R[i][j]) - float(result.T[i][j])
+                summed = sum(
+                    float(result.layer_absorption[layer][i][j])
+                    for layer in range(2)
+                )
+                assert abs(summed - total) < 1e-12
+
+
+class TestAbsorptionBoth:
+    """BOTH polarization carries a leading TE/TM axis — Issue #49."""
+
+    def test_scalar_shapes(self, set_backend):
+        stack = _lossy_bilayer()
+        result = stratix.solve(
+            stack, 5e-7, kx=3e6, polarization=Polarization.BOTH,
+            absorption=True,
+        )
+        assert result.layer_absorption.shape == (2, 2)
+        assert result.energy_balance.shape == (2,)
+
+    def test_sweep_shapes(self, set_backend):
+        stack = _lossy_bilayer()
+        wavelengths = nd.array([4e-7, 5e-7, 6e-7])
+        result = stratix.solve(
+            stack, wavelengths, kx=3e6, polarization=Polarization.BOTH,
+            absorption=True,
+        )
+        assert result.R.shape == (2, 3)
+        assert result.layer_absorption.shape == (2, 2, 3)
+        assert result.energy_balance.shape == (2, 3)
+
+    def test_te_tm_slices_match_single_polarization(self, set_backend):
+        stack = _lossy_bilayer()
+        wavelengths = nd.array([4e-7, 6e-7])
+        both = stratix.solve(
+            stack, wavelengths, kx=3e6, polarization=Polarization.BOTH,
+            absorption=True,
+        )
+        for axis, pol in enumerate((Polarization.TE, Polarization.TM)):
+            single = stratix.solve(
+                stack, wavelengths, kx=3e6, polarization=pol, absorption=True,
+            )
+            for layer in range(2):
+                for i in range(2):
+                    assert abs(
+                        float(both.layer_absorption[axis][layer][i])
+                        - float(single.layer_absorption[layer][i])
+                    ) < 1e-12
+
+    def test_tm_absorption_against_one_minus_r_minus_t(self, set_backend):
+        stack = _lossy_bilayer()
+        wavelengths = nd.array([4e-7, 5e-7, 6e-7])
+        result = stratix.solve(
+            stack, wavelengths, kx=4e6, polarization=Polarization.BOTH,
+            absorption=True,
+        )
+        tm = 1
+        for i in range(3):
+            total = 1.0 - float(result.R[tm][i]) - float(result.T[tm][i])
+            summed = sum(
+                float(result.layer_absorption[tm][layer][i])
+                for layer in range(2)
+            )
+            assert abs(summed - total) < 1e-12
+
+
 class TestAbsorptionWithMethods:
     """Absorption via non-default solver methods (total only, no per-layer)."""
 
