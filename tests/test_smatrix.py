@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numdiff as nd
+import pytest
 from phokaia import Layer
 from phokaia import Material
 from phokaia import Polarization
@@ -639,3 +640,176 @@ class TestMultiLayerTM:
         R = float(result.R[0])
         T = float(result.T[0])
         assert abs(R + T - 1.0) < 1e-12
+
+
+class TestThicknessOverride:
+    def test_override_matches_stack_with_same_thickness(self, set_backend):
+        """Passing same thicknesses as stack gives identical R/T."""
+        n_air, n_film, n_sub = 1.0, 1.38, 1.5
+        d = 100e-9
+
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_sub**2),
+            layers=[
+                Layer(thickness=d, material=Material(epsilon=n_film**2)),
+                Layer(thickness=2 * d, material=Material(epsilon=2.0**2)),
+            ],
+        )
+
+        thicknesses_override = nd.array(
+            [layer.thickness for layer in stack.layers]
+        )
+
+        for method in [Method.SMATRIX, Method.ABELES, Method.ADMITTANCE, Method.DTN]:
+            orig = stratix.solve(stack, 5e-7, kx=0.0, polarization=Polarization.TE, method=method)
+            over = stratix.solve(
+                stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+                method=method, thicknesses=thicknesses_override,
+            )
+            assert abs(float(orig.R[0]) - float(over.R[0])) < 1e-12, (
+                f"{method.value}: override R differs from original"
+            )
+            assert abs(float(orig.T[0]) - float(over.T[0])) < 1e-12, (
+                f"{method.value}: override T differs from original"
+            )
+
+    def test_override_changes_result(self, set_backend):
+        """Different thickness changes R/T for all methods."""
+        n_air, n_film, n_sub = 1.0, 1.38, 1.5
+        d = 100e-9
+
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_sub**2),
+            layers=[Layer(thickness=d, material=Material(epsilon=n_film**2))],
+        )
+
+        thick_orig = nd.array([d])
+        thick_mod = nd.array([150e-9])
+
+        for method in [Method.SMATRIX, Method.ABELES, Method.ADMITTANCE, Method.DTN]:
+            orig = stratix.solve(
+                stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+                method=method, thicknesses=thick_orig,
+            )
+            mod = stratix.solve(
+                stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+                method=method, thicknesses=thick_mod,
+            )
+            assert abs(float(orig.R[0]) - float(mod.R[0])) > 1e-10, (
+                f"{method.value}: R should differ with different thickness"
+            )
+
+    def test_validation_wrong_length(self, set_backend):
+        """ValueError when thicknesses length != len(stack.layers)."""
+        stack = Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+            layers=[Layer(thickness=100e-9, material=Material(epsilon=1.38**2))],
+        )
+
+        with pytest.raises(ValueError, match=r"length.*must match"):
+            stratix.solve(
+                stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+                thicknesses=nd.array([100e-9, 200e-9]),
+            )
+
+    def test_validation_non_sequence(self, set_backend):
+        """TypeError when thicknesses is not a sequence."""
+        stack = Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+            layers=[Layer(thickness=100e-9, material=Material(epsilon=1.38**2))],
+        )
+
+        with pytest.raises(TypeError, match="must be a sequence"):
+            stratix.solve(
+                stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+                thicknesses=42.0,
+            )
+
+    def test_none_override_zero_layers(self, set_backend):
+        """None override on zero-layer stack works fine."""
+        stack = Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+        )
+
+        result = stratix.solve(
+            stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+            thicknesses=None,
+        )
+
+        assert abs(float(result.R[0]) + float(result.T[0]) - 1.0) < 1e-12
+
+    def test_intermediates_reflects_override(self, set_backend):
+        """intermediates['thicknesses'] uses override, not stack values."""
+        n_air, n_film, n_sub = 1.0, 1.38, 1.5
+        d_orig = 100e-9
+        d_override = 200e-9
+
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_sub**2),
+            layers=[Layer(thickness=d_orig, material=Material(epsilon=n_film**2))],
+        )
+
+        thicknesses = nd.array([d_override])
+        result = stratix.solve(
+            stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+            thicknesses=thicknesses,
+        )
+
+        stored = result.intermediates.get("thicknesses")
+        assert stored is not None
+        assert abs(float(nd.array(stored[0])) - d_override) < 1e-12, (
+            f"intermediates thickness should be override ({d_override}), "
+            f"got {float(nd.array(stored[0]))}"
+        )
+
+    def test_solve_angles_forwards_thicknesses(self, set_backend):
+        """solve_angles passes thicknesses override through to solve."""
+        n_air, n_film, n_sub = 1.0, 1.38, 1.5
+        d = 100e-9
+
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_sub**2),
+            layers=[Layer(thickness=d, material=Material(epsilon=n_film**2))],
+        )
+
+        thicknesses = nd.array([d])
+        result = stratix.solve_angles(
+            stack, wavelengths=5e-7, angles=0.0,
+            polarization=Polarization.TE, thicknesses=thicknesses,
+        )
+
+        assert abs(float(result.R[0]) + float(result.T[0]) - 1.0) < 1e-12
+
+    def test_all_methods_agree_same_thickness_override(self, set_backend):
+        """All methods produce same R/T for zero-layer stack with override."""
+        stack = Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+        )
+
+        results = {}
+        for method in [Method.SMATRIX, Method.ABELES, Method.ADMITTANCE, Method.DTN]:
+            results[method] = stratix.solve(
+                stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+                method=method, thicknesses=None,
+            )
+
+        ref_R = float(results[Method.SMATRIX].R[0])
+        ref_T = float(results[Method.SMATRIX].T[0])
+
+        for method in [Method.ABELES, Method.ADMITTANCE, Method.DTN]:
+            assert abs(float(results[method].R[0]) - ref_R) < 1e-12, (
+                f"{method.value} R differs from SMATRIX: "
+                f"{float(results[method].R[0])} vs {ref_R}"
+            )
+            assert abs(float(results[method].T[0]) - ref_T) < 1e-12, (
+                f"{method.value} T differs from SMATRIX: "
+                f"{float(results[method].T[0])} vs {ref_T}"
+            )

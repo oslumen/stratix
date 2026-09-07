@@ -7,6 +7,7 @@ from phokaia import Polarization
 from phokaia import Stack
 
 from ._medium_params import _medium_params
+from ._util import _resolve_thicknesses
 from ._util import _safe_R
 from ._util import _safe_T
 
@@ -122,12 +123,7 @@ def _smatrix_solve(
 
     layer_abs_list: list = []
 
-    if thicknesses is not None:
-        _thicknesses = thicknesses
-        _thicknesses_intr = [float(layer.thickness) for layer in stack.layers]
-    else:
-        _thicknesses = nd.array([layer.thickness for layer in stack.layers])
-        _thicknesses_intr = [float(layer.thickness) for layer in stack.layers]
+    _thicknesses = _resolve_thicknesses(stack, thicknesses)
 
     for i in range(1, n_interfaces):
         d = _thicknesses[i - 1]
@@ -167,7 +163,7 @@ def _smatrix_solve(
         "t_total": t_total,
         "interface_smatrices": interface_smatrices,
         "propagation_smatrices": propagation_smatrices,
-        "thicknesses": _thicknesses_intr,
+        "thicknesses": _thicknesses,
         "polarization": polarization,
         "layer_absorption": layer_abs_list,
         "energy_balance": energy_bal,

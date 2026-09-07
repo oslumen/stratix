@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numdiff as nd
 from phokaia import PlaneWave
 from phokaia import Polarization
@@ -21,6 +23,7 @@ def solve_angles(
     polarization: Polarization,
     method: Method = Method.AUTO,
     absorption: bool = False,
+    thicknesses: Any = None,
 ) -> Result:
     """Compute reflectance/transmittance for given incidence angles.
 
@@ -35,6 +38,7 @@ def solve_angles(
     polarization : ``TE`` or ``TM``.
     method : Solver method.
     absorption : If ``True``, compute per-layer absorption (not yet implemented).
+    thicknesses : Optional 1-D array overriding the stack's layer thicknesses.
 
     Returns
     -------
@@ -77,6 +81,7 @@ def solve_angles(
             polarization=polarization,
             method=method,
             absorption=absorption,
+            thicknesses=thicknesses,
         )
 
         R_list.append(float(result.R[0]))
@@ -99,6 +104,7 @@ def solve_from_source(
     polarization: Polarization,
     method: Method = Method.AUTO,
     absorption: bool = False,
+    thicknesses: Any = None,
 ) -> Result:
     """Compute reflectance/transmittance from a PlaneWave source.
 
@@ -137,4 +143,5 @@ def solve_from_source(
         polarization=polarization,
         method=method,
         absorption=absorption,
+        thicknesses=thicknesses,
     )

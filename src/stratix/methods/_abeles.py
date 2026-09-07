@@ -13,12 +13,17 @@ from phokaia import Polarization
 from phokaia import Stack
 
 from ._medium_params import _medium_params
+from ._util import _resolve_thicknesses
 from ._util import _safe_R
 from ._util import _safe_T
 
 
 def _abeles_solve(
-    stack: Stack, wavelength: float, kx: float, polarization: Polarization
+    stack: Stack,
+    wavelength: float,
+    kx: float,
+    polarization: Polarization,
+    thicknesses: nd.ndarray | None = None,
 ) -> tuple[nd.ndarray, nd.ndarray, dict]:
     _omega, _k0, kzs, _, _, denom_vals = _medium_params(
         stack, wavelength, kx, polarization
@@ -27,6 +32,8 @@ def _abeles_solve(
     Z_0 = Zs[0]
     Z_s = Zs[-1]
 
+    _d = _resolve_thicknesses(stack, thicknesses)
+
     m11 = nd.array(1.0 + 0j)
     m12 = nd.array(0j)
     m21 = nd.array(0j)
@@ -34,7 +41,7 @@ def _abeles_solve(
 
     for i in range(len(stack.layers)):
         Z = Zs[i + 1]
-        phi = kzs[i + 1] * stack.layers[i].thickness
+        phi = kzs[i + 1] * _d[i]
 
         cos_phi = nd.cos(phi)
         sin_phi = nd.sin(phi)
@@ -62,4 +69,4 @@ def _abeles_solve(
     R = _safe_R(r_total, kz0, denom0)
     T = _safe_T(t_total, kz0, denom0, kzs[-1], denom_vals[-1])
 
-    return R, T, {}
+    return R, T, {"thicknesses": _d}

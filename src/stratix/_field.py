@@ -37,11 +37,11 @@ def compute_field_profile(result, z_positions) -> dict:
     denom_vals: list = intr["denom_vals"]
     t_total = intr["t_total"]
     interface_smatrices: list = intr["interface_smatrices"]
-    thicknesses: list = intr["thicknesses"]
+    thicknesses = intr["thicknesses"]
     polarization: Polarization = intr["polarization"]
 
     n_media = len(kzs)
-    total_thickness = sum(thicknesses) if thicknesses else 0.0
+    total_thickness = float(nd.sum(thicknesses)) if thicknesses is not None else 0.0
 
     A = [nd.array(0j) for _ in range(n_media)]
     B = [nd.array(0j) for _ in range(n_media)]

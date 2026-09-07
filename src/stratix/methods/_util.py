@@ -2,7 +2,36 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numdiff as nd
+
+if TYPE_CHECKING:
+    from phokaia import Stack
+
+
+def _resolve_thicknesses(
+    stack: Stack,
+    thicknesses: nd.ndarray | None = None,
+) -> nd.ndarray:
+    """Resolve layer thicknesses from stack or override.
+
+    When ``thicknesses`` is not ``None`` it overrides the frozen
+    ``Layer.thickness`` values in ``stack.layers``, enabling autodiff
+    w.r.t. thickness via ``nd.grad``.
+
+    Parameters
+    ----------
+    stack : Multilayer stack.
+    thicknesses : Optional 1-D array, length ``len(stack.layers)``.
+
+    Returns
+    -------
+    1-D ndarray of resolved thicknesses.
+    """
+    if thicknesses is None:
+        return nd.array([layer.thickness for layer in stack.layers])
+    return thicknesses
 
 
 def _safe_R(r_coeff: nd.ndarray, kz0: nd.ndarray, denom0: nd.ndarray) -> nd.ndarray:

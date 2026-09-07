@@ -16,6 +16,28 @@ from .methods._dtn import _dtn_solve
 from .methods._smatrix import _smatrix_solve
 
 
+def _validate_thicknesses(thicknesses: Any, stack: Stack) -> None:
+    """Validate the thicknesses override parameter.
+
+    Raises ``ValueError`` if ``thicknesses`` is not ``None`` and does
+    not match ``len(stack.layers)``.
+    """
+    if thicknesses is None:
+        return
+    try:
+        n_thick = len(thicknesses)
+    except TypeError as exc:
+        raise TypeError(
+            f"thicknesses must be a sequence, got {type(thicknesses).__name__}"
+        ) from exc
+    n_layers = len(stack.layers)
+    if n_thick != n_layers:
+        raise ValueError(
+            f"thicknesses length ({n_thick}) must match "
+            f"number of layers ({n_layers})"
+        )
+
+
 def _scalar_solve(
     stack: Stack,
     wavelength: float | nd.ndarray,
@@ -29,11 +51,11 @@ def _scalar_solve(
     if resolved == Method.SMATRIX:
         return _smatrix_solve(stack, wavelength, kx, polarization, thicknesses=thicknesses)
     elif resolved == Method.ABELES:
-        return _abeles_solve(stack, wavelength, kx, polarization)
+        return _abeles_solve(stack, wavelength, kx, polarization, thicknesses=thicknesses)
     elif resolved == Method.ADMITTANCE:
-        return _admittance_solve(stack, wavelength, kx, polarization)
+        return _admittance_solve(stack, wavelength, kx, polarization, thicknesses=thicknesses)
     elif resolved == Method.DTN:
-        return _dtn_solve(stack, wavelength, kx, polarization)
+        return _dtn_solve(stack, wavelength, kx, polarization, thicknesses=thicknesses)
     else:
         raise NotImplementedError(f"Method {resolved.value!r} not yet implemented")
 
@@ -66,6 +88,8 @@ def solve(
     Result with ``R``, ``T``, and metadata fields.
     """
     resolved = Method.SMATRIX if method == Method.AUTO else method
+
+    _validate_thicknesses(thicknesses, stack)
 
     if polarization == Polarization.BOTH:
         res_te = solve(stack, wavelength, kx, Polarization.TE, method, absorption, thicknesses)
