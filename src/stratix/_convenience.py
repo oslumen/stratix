@@ -8,6 +8,10 @@ from phokaia import Polarization
 from phokaia import Stack
 
 from ._result import Result
+from ._solve import _resolve_method
+from ._solve import _solve_grid
+from ._solve import _sweep_axis
+from ._solve import _validate_thicknesses
 from ._solve import solve
 from ._types import Method
 
@@ -16,8 +20,8 @@ _C0: float = 299792458.0  # speed of light in vacuum (m/s)
 
 def solve_angles(
     stack: Stack,
-    wavelengths: float,
-    angles: float | list,
+    wavelengths: float | list | nd.ndarray,
+    angles: float | list | nd.ndarray,
     polarization: Polarization,
     method: Method = Method.AUTO,
     absorption: bool = False,
@@ -25,15 +29,18 @@ def solve_angles(
 ) -> Result:
     """Compute reflectance/transmittance for given incidence angles.
 
-    Converts incidence angle θ (degrees) to in-plane wavevector
-    kx = (2π/λ) · n_super · sin(θ) and delegates to :func:`solve`.
+    Converts every incidence angle θ (degrees) to an in-plane wavevector
+    kx = n_super(ω) · (2π/λ) · sin(θ) and runs one vectorized solve over the
+    whole grid.  The superstrate index is evaluated at the angular frequency
+    ω = 2πc/λ, so a dispersive superstrate gets the index belonging to each
+    wavelength.
 
     Parameters
     ----------
     stack : Planar multilayer stack.
-    wavelengths : Vacuum wavelength in meters (scalar).
+    wavelengths : Vacuum wavelength(s) in meters (scalar or array).
     angles : Incidence angle(s) in degrees from normal (scalar or array).
-    polarization : ``TE`` or ``TM``.
+    polarization : ``TE``, ``TM``, or ``BOTH``.
     method : Solver method.
     absorption : If ``True``, also return per-layer absorption and the
         energy balance, as in :func:`solve`.
@@ -42,81 +49,84 @@ def solve_angles(
     Returns
     -------
     Result following the ``(Nλ, Nk)`` shape contract of :func:`solve`.  One
-    angle is one kx, so ``R`` and ``T`` are ``(1, n_angles)``.
+    angle is one kx, so ``R`` and ``T`` are ``(Nλ, n_angles)``.
 
-    Notes
-    -----
-    Unlike :func:`solve`, this is **not** yet differentiable end to end: the
-    wavelength and each angle are cast to ``float`` before the solve, which
-    breaks the autodiff trace at the inputs.  Removing those casts, together
-    with evaluating the superstrate index at ω rather than λ, is issue #51.
+    Nothing between the inputs and the returned fields casts to ``float``,
+    so ``nd.grad`` w.r.t. wavelength, angle or thickness works on the
+    autodiff backends.  The angle range check does read its input's value,
+    though, so unlike :func:`solve` this is not traceable under ``nd.jit``.
+
+    Raises
+    ------
+    ValueError
+        If the superstrate is absorbing or metallic.  A complex index makes
+        kx = n(ω)·k0·sin θ complex, and R and T stop being ``|r|²`` and the
+        z-flux ratio, so the angle no longer names a meaningful sweep
+        point.  :func:`solve` still accepts such a kx explicitly.
+
+    Shapes
+    ------
+    ``kx`` is the one field that cannot always stay a 1-D sweep coordinate:
+    it depends on the wavelength as well as the angle.  For a scalar
+    wavelength it is ``(n_angles,)`` as usual; for an array of wavelengths
+    it follows the grid as ``(Nλ, n_angles)``, a length-1 array included.
     """
-    wl = float(nd.array(wavelengths))
+    resolved = _resolve_method(method)
 
-    if isinstance(angles, (int, float)):
-        angles_list = [float(angles)]
-    else:
-        angles_list = [float(a) for a in angles]
+    _validate_thicknesses(thicknesses, stack)
 
-    if len(angles_list) == 0:
+    # A scalar wavelength and a length-1 array both give an Nλ of 1, but
+    # only the scalar leaves kx a 1-D sweep coordinate, so the distinction
+    # has to be taken before the axis is promoted.
+    wl_input = wavelengths if hasattr(wavelengths, "ndim") else nd.asarray(wavelengths)
+    scalar_wavelength = wl_input.ndim == 0
+
+    wl_axis = _sweep_axis(wl_input)
+    angle_axis = _sweep_axis(angles)
+
+    if angle_axis.shape[0] == 0:
         raise ValueError("angles must be non-empty")
-
-    for a in angles_list:
-        if a < 0 or a > 90:
-            raise ValueError(
-                f"Incidence angle must be in [0, 90] degrees, got {a}"
-            )
-
-    eps_super = float(stack.superstrate.epsilon(wl))
-    mu_super = float(stack.superstrate.mu(wl))
-    n_super = float(nd.sqrt(nd.array(eps_super * mu_super)))
-
-    k0 = 2 * nd.pi / wl
-
-    # Each entry is one angle's sweep corner; stacking them builds the Nk axis.
-    R_terms: list[nd.ndarray] = []
-    T_terms: list[nd.ndarray] = []
-    absorption_terms: list[nd.ndarray] = []
-    balance_terms: list[nd.ndarray] = []
-    kx_list: list[float] = []
-
-    for theta_deg in angles_list:
-        theta_rad = theta_deg * nd.pi / 180
-        kx = float(n_super * k0 * nd.sin(nd.array(theta_rad)))
-
-        result = solve(
-            stack,
-            wavelength=wl,
-            kx=kx,
-            polarization=polarization,
-            method=method,
-            absorption=absorption,
-            thicknesses=thicknesses,
+    if bool(nd.any(angle_axis < 0)) or bool(nd.any(angle_axis > 90)):
+        raise ValueError(
+            f"Incidence angles must be in [0, 90] degrees, got {angle_axis}"
         )
 
-        R_terms.append(result.R[..., 0, 0])
-        T_terms.append(result.T[..., 0, 0])
-        if absorption:
-            absorption_terms.append(result.layer_absorption[..., 0, 0])
-            balance_terms.append(result.energy_balance[..., 0, 0])
-        kx_list.append(kx)
+    # The wavelength axis is a column and the angle axis a row, so the two
+    # broadcast into the (Nλ, n_angles) grid the shape contract asks for.
+    wl_col = wl_axis.reshape(-1, 1)
+    omega = 2 * nd.pi * _C0 / wl_col
+    eps_mu = nd.asarray(
+        stack.superstrate.epsilon(omega=omega) * stack.superstrate.mu(omega=omega)
+    )
 
-    # One angle is one kx, so the angles fill the Nk axis of the (Nλ, Nk)
-    # shape contract and the scalar wavelength is the length-1 Nλ axis.  The
-    # per-angle entries stack onto the end, then a length-1 Nλ axis is opened
-    # in front of them; BOTH's leading TE/TM axis rides along untouched.
-    def _grid(terms: list) -> nd.ndarray:
-        return nd.stack(terms, axis=-1)[..., None, :]
+    # n = sqrt(eps·mu) is real only where eps·mu is real and non-negative,
+    # and kx is real only where n is.  ``x - real(x)`` is the imaginary
+    # part; it stands in for ``nd.imag``, which torch refuses on a real
+    # tensor ("imag is not implemented for tensors with non-complex
+    # dtypes").
+    imaginary = bool(nd.any(nd.abs(eps_mu - nd.real(eps_mu)) != 0))
+    if imaginary or bool(nd.any(nd.real(eps_mu) < 0)):
+        raise ValueError(
+            "solve_angles needs a transparent superstrate: an angle maps to "
+            "kx = n(omega)*k0*sin(theta), which is complex unless eps*mu is "
+            f"real and non-negative (got {eps_mu}).  R and T are then no "
+            "longer |r|^2 and the z-flux ratio.  Call solve() with an "
+            "explicit kx to drive an absorbing or metallic superstrate anyway."
+        )
 
-    return Result(
-        R=_grid(R_terms),
-        T=_grid(T_terms),
-        wavelengths=nd.asarray(wl).reshape(1),
-        kx=nd.array(kx_list),
+    n_super = nd.sqrt(eps_mu)
+    k0 = 2 * nd.pi / wl_col
+    kx_grid = n_super * k0 * nd.sin(angle_axis * nd.pi / 180)
+
+    grid = _solve_grid(
+        stack, wl_col, kx_grid, polarization, resolved, absorption, thicknesses
+    )
+
+    return grid.to_result(
+        wavelengths=wl_axis,
+        kx=kx_grid.reshape(-1) if scalar_wavelength else kx_grid,
         polarization=polarization,
-        method_used=result.method_used,
-        layer_absorption=_grid(absorption_terms) if absorption else None,
-        energy_balance=_grid(balance_terms) if absorption else None,
+        method_used=resolved,
     )
 
 

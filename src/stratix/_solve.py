@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import NamedTuple
 
 import numdiff as nd
 from phokaia import Polarization
@@ -37,6 +38,15 @@ def _validate_thicknesses(thicknesses: Any, stack: Stack) -> None:
             f"thicknesses length ({n_thick}) must match "
             f"number of layers ({n_layers})"
         )
+
+
+def _resolve_method(method: Method) -> Method:
+    """Resolve ``Method.AUTO`` to the concrete method it stands for.
+
+    ``AUTO`` means ``SMATRIX`` (ADR 0001): it is the only always-stable
+    method, so it is the one default every entry point shares.
+    """
+    return Method.SMATRIX if method == Method.AUTO else method
 
 
 def _sweep_axis(value: Any) -> nd.ndarray:
@@ -106,6 +116,88 @@ def _absorption_fields(
     return layer_abs, energy_bal
 
 
+class _GridSolution(NamedTuple):
+    """Raw solver output on a broadcast sweep grid, before it becomes a Result."""
+
+    R: nd.ndarray
+    T: nd.ndarray
+    layer_absorption: nd.ndarray | None
+    energy_balance: nd.ndarray | None
+    intermediates: Any
+
+    def to_result(
+        self,
+        wavelengths: nd.ndarray,
+        kx: nd.ndarray,
+        polarization: Polarization,
+        method_used: Method,
+    ) -> Result:
+        """Attach the sweep coordinates and metadata that make it a Result."""
+        return Result(
+            R=self.R,
+            T=self.T,
+            wavelengths=wavelengths,
+            kx=kx,
+            polarization=polarization,
+            method_used=method_used,
+            layer_absorption=self.layer_absorption,
+            energy_balance=self.energy_balance,
+            intermediates=self.intermediates,
+        )
+
+
+def _solve_grid(
+    stack: Stack,
+    wl_grid: nd.ndarray,
+    kx_grid: nd.ndarray,
+    polarization: Polarization,
+    resolved: Method,
+    absorption: bool,
+    thicknesses: Any,
+) -> _GridSolution:
+    """Solve on wavelength and kx arrays that already broadcast together.
+
+    ``wl_grid`` and ``kx_grid`` must broadcast to the ``(Nλ, Nk)`` output
+    shape.  :func:`solve` builds them as the outer product of two
+    independent sweep axes.  :func:`~stratix._convenience.solve_angles`
+    cannot: kx = n(ω)·k0·sin θ depends on the wavelength as well as the
+    angle, so it passes a kx that varies along the wavelength axis.  Taking
+    the grid as given is what lets both share one vectorized solve.
+    """
+    if polarization == Polarization.BOTH:
+        te = _solve_grid(
+            stack, wl_grid, kx_grid, Polarization.TE, resolved, absorption, thicknesses
+        )
+        tm = _solve_grid(
+            stack, wl_grid, kx_grid, Polarization.TM, resolved, absorption, thicknesses
+        )
+        layer_abs = None
+        energy_bal = None
+        if absorption:
+            layer_abs = nd.stack([te.layer_absorption, tm.layer_absorption])
+            energy_bal = nd.stack([te.energy_balance, tm.energy_balance])
+        # Keep both polarizations' intermediates so field profiles from a
+        # BOTH Result can carry the TE/TM axis like every other field.
+        return _GridSolution(
+            R=nd.stack([te.R, tm.R]),
+            T=nd.stack([te.T, tm.T]),
+            layer_absorption=layer_abs,
+            energy_balance=energy_bal,
+            intermediates={"te": te.intermediates, "tm": tm.intermediates},
+        )
+
+    R, T, intermediates = _dispatch_solve(
+        stack, wl_grid, kx_grid, polarization, resolved, thicknesses
+    )
+
+    layer_abs = None
+    energy_bal = None
+    if absorption:
+        layer_abs, energy_bal = _absorption_fields(R, T, intermediates, resolved)
+
+    return _GridSolution(R, T, layer_abs, energy_bal, intermediates)
+
+
 def solve(
     stack: Stack,
     wavelength: float,
@@ -149,58 +241,21 @@ def solve(
     or wraps values in a Python list, so ``nd.grad`` of a function calling
     ``solve()`` works on the autodiff backends.
     """
-    resolved = Method.SMATRIX if method == Method.AUTO else method
+    resolved = _resolve_method(method)
 
     _validate_thicknesses(thicknesses, stack)
-
-    if polarization == Polarization.BOTH:
-        res_te = solve(stack, wavelength, kx, Polarization.TE, method, absorption, thicknesses)
-        res_tm = solve(stack, wavelength, kx, Polarization.TM, method, absorption, thicknesses)
-        layer_abs = None
-        energy_bal = None
-        if absorption:
-            layer_abs = nd.stack([res_te.layer_absorption, res_tm.layer_absorption])
-            energy_bal = nd.stack([res_te.energy_balance, res_tm.energy_balance])
-        # Keep both polarizations' intermediates so field profiles from a
-        # BOTH Result can carry the TE/TM axis like every other field.
-        intermediates = {"te": res_te.intermediates, "tm": res_tm.intermediates}
-        return Result(
-            R=nd.stack([res_te.R, res_tm.R]),
-            T=nd.stack([res_te.T, res_tm.T]),
-            wavelengths=res_te.wavelengths,
-            kx=res_te.kx,
-            polarization=Polarization.BOTH,
-            method_used=res_te.method_used,
-            layer_absorption=layer_abs,
-            energy_balance=energy_bal,
-            intermediates=intermediates,
-        )
 
     wl_axis = _sweep_axis(wavelength)
     kx_axis = _sweep_axis(kx)
 
-    R, T, intermediates = _dispatch_solve(
+    grid = _solve_grid(
         stack,
         wl_axis.reshape(-1, 1),
         kx_axis.reshape(1, -1),
         polarization,
         resolved,
+        absorption,
         thicknesses,
     )
 
-    layer_abs = None
-    energy_bal = None
-    if absorption:
-        layer_abs, energy_bal = _absorption_fields(R, T, intermediates, resolved)
-
-    return Result(
-        R=R,
-        T=T,
-        wavelengths=wl_axis,
-        kx=kx_axis,
-        polarization=polarization,
-        method_used=resolved,
-        layer_absorption=layer_abs,
-        energy_balance=energy_bal,
-        intermediates=intermediates,
-    )
+    return grid.to_result(wl_axis, kx_axis, polarization, resolved)

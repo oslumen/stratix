@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numdiff as nd
 import pytest
+from phokaia import Layer
 from phokaia import Material
 from phokaia import PlaneWave
 from phokaia import Polarization
@@ -39,7 +40,9 @@ class TestSolveAngles:
 
         assert abs(float(result_conv.R[0, 0]) - float(result_direct.R[0, 0])) < 1e-12
         assert abs(float(result_conv.T[0, 0]) - float(result_direct.T[0, 0])) < 1e-12
-        assert abs(float(result_conv.kx[0]) - float(result_direct.kx[0])) < 1e-12
+        assert abs(float(result_conv.kx[0]) - float(result_direct.kx[0])) < (
+            1e-12 * max(abs(expected_kx), 1.0)
+        )
 
     def test_normal_incidence(self, set_backend):
         """θ=0 → kx=0, matches normal incidence solve."""
@@ -85,7 +88,9 @@ class TestSolveAngles:
             theta_rad = nd.array(theta_deg * nd.pi / 180)
             k0 = 2 * nd.pi / wavelength
             expected_kx = float(n_air * k0 * nd.sin(theta_rad))
-            assert abs(float(result.kx[i]) - expected_kx) < 1e-12
+            assert abs(float(result.kx[i]) - expected_kx) < 1e-12 * max(
+                abs(expected_kx), 1.0
+            )
 
     def test_tm_polarization(self, set_backend):
         """solve_angles works with TM polarization."""
@@ -433,3 +438,284 @@ class TestSolveFromSource:
             R = float(result.R[0, 0])
             T = float(result.T[0, 0])
             assert abs(R + T - 1.0) < 1e-12, f"θ={theta}: R+T={R + T}"
+
+
+class TestSolveAnglesVectorized:
+    """solve_angles runs one vectorized solve and supports array wavelengths.
+
+    Issue #51: the angle sweep is a single vectorized solve() over a kx grid,
+    the superstrate index is evaluated at ω (not λ), and a complex-epsilon
+    superstrate no longer hits a ``float()`` cast.
+    """
+
+    @staticmethod
+    def _plasma_superstrate(amplitude: float = 4.0e30) -> Material:
+        """A superstrate whose epsilon depends on ω, not λ."""
+        return Material(epsilon=lambda omega: 1.0 + amplitude / omega**2)
+
+    @staticmethod
+    def _n_super_at(material: Material, wavelength: float) -> complex:
+        omega = 2 * nd.pi * _C0 / wavelength
+        eps = material.epsilon(omega=omega)
+        mu = material.mu(omega=omega)
+        return complex(nd.sqrt(nd.array(eps * mu + 0j)))
+
+    def test_dispersive_superstrate_kx_uses_omega(self, set_backend):
+        """kx = n(ω)·k0·sin θ, with the index taken at ω = 2πc/λ."""
+        superstrate = self._plasma_superstrate()
+        stack = Stack(superstrate=superstrate, substrate=Material(epsilon=4.0))
+        wavelength = 633e-9
+        angles = [0.0, 30.0, 60.0]
+
+        n_super = self._n_super_at(superstrate, wavelength).real
+        k0 = 2 * nd.pi / wavelength
+
+        result = stratix.solve_angles(
+            stack, wavelength, angles, polarization=Polarization.TE
+        )
+
+        for i, theta in enumerate(angles):
+            expected = n_super * k0 * float(nd.sin(nd.array(theta * nd.pi / 180)))
+            assert abs(float(result.kx[i]) - expected) < 1e-6 * max(expected, 1.0)
+
+    def test_dispersive_superstrate_matches_direct_solve(self, set_backend):
+        """R/T agree with solve() fed the ω-evaluated kx by hand."""
+        superstrate = self._plasma_superstrate()
+        stack = Stack(superstrate=superstrate, substrate=Material(epsilon=4.0))
+        wavelength = 633e-9
+        theta = 40.0
+
+        n_super = self._n_super_at(superstrate, wavelength).real
+        kx = n_super * (2 * nd.pi / wavelength) * float(
+            nd.sin(nd.array(theta * nd.pi / 180))
+        )
+
+        conv = stratix.solve_angles(
+            stack, wavelength, theta, polarization=Polarization.TE
+        )
+        direct = stratix.solve(
+            stack, wavelength, kx=kx, polarization=Polarization.TE
+        )
+
+        assert abs(float(conv.R[0, 0]) - float(direct.R[0, 0])) < 1e-12
+        assert abs(float(conv.T[0, 0]) - float(direct.T[0, 0])) < 1e-12
+
+    def test_single_vectorized_solve_call(self, monkeypatch, set_backend):
+        """All angles go through one dispatch, not one dispatch per angle."""
+        from stratix import _solve as solve_module
+
+        calls: list[int] = []
+        original = solve_module._dispatch_solve
+
+        def counting_dispatch(*args, **kwargs):
+            calls.append(1)
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(solve_module, "_dispatch_solve", counting_dispatch)
+
+        stack = Stack(
+            superstrate=Material(epsilon=1.0), substrate=Material(epsilon=2.25)
+        )
+        stratix.solve_angles(
+            stack, 633e-9, [0.0, 15.0, 30.0, 45.0, 60.0],
+            polarization=Polarization.TE,
+        )
+        assert len(calls) == 1
+
+    def test_array_wavelengths_grid_shape(self, set_backend):
+        """Array wavelengths give the full (Nλ, Nk) grid."""
+        stack = Stack(
+            superstrate=Material(epsilon=1.0), substrate=Material(epsilon=2.25)
+        )
+        wavelengths = [500e-9, 600e-9, 700e-9]
+        angles = [0.0, 30.0, 60.0, 80.0]
+
+        result = stratix.solve_angles(
+            stack, wavelengths, angles, polarization=Polarization.TE
+        )
+
+        assert result.R.shape == (3, 4)
+        assert result.T.shape == (3, 4)
+        assert result.wavelengths.shape == (3,)
+        # kx varies with wavelength, so it follows the grid here.
+        assert result.kx.shape == (3, 4)
+
+    def test_array_wavelengths_match_scalar_calls(self, set_backend):
+        """Each row of the grid equals the scalar-wavelength solve."""
+        stack = Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+            layers=[Layer(thickness=120e-9, material=Material(epsilon=4.0))],
+        )
+        wavelengths = [500e-9, 650e-9]
+        angles = [0.0, 35.0, 70.0]
+
+        grid = stratix.solve_angles(
+            stack, wavelengths, angles, polarization=Polarization.TE
+        )
+        for i, wl in enumerate(wavelengths):
+            row = stratix.solve_angles(
+                stack, wl, angles, polarization=Polarization.TE
+            )
+            assert float(nd.max(nd.abs(grid.R[i] - row.R[0]))) < 1e-12
+            assert float(nd.max(nd.abs(grid.T[i] - row.T[0]))) < 1e-12
+
+    def test_kx_stays_1d_for_scalar_wavelength(self, set_backend):
+        """A scalar wavelength keeps kx a 1-D sweep coordinate."""
+        stack = Stack(
+            superstrate=Material(epsilon=1.0), substrate=Material(epsilon=2.25)
+        )
+        result = stratix.solve_angles(
+            stack, 633e-9, [0.0, 30.0, 60.0], polarization=Polarization.TE
+        )
+        assert result.kx.shape == (3,)
+
+    def test_array_wavelengths_under_both(self, set_backend):
+        """BOTH prepends the TE/TM axis to the (Nλ, Nk) grid."""
+        stack = Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+            layers=[Layer(thickness=80e-9, material=Material(epsilon=4.0))],
+        )
+        result = stratix.solve_angles(
+            stack, [500e-9, 600e-9], [0.0, 45.0],
+            polarization=Polarization.BOTH, absorption=True,
+        )
+        assert result.R.shape == (2, 2, 2)
+        assert result.layer_absorption.shape == (2, 1, 2, 2)
+        assert result.energy_balance.shape == (2, 2, 2)
+
+    def test_complex_epsilon_superstrate_raises_clear_error(self, set_backend):
+        """A lossy superstrate gets a clear error, not a TypeError from float()."""
+        stack = Stack(
+            superstrate=Material(epsilon=complex(2.25, 0.05)),
+            substrate=Material(epsilon=4.0),
+        )
+        with pytest.raises(ValueError, match="transparent superstrate"):
+            stratix.solve_angles(
+                stack, 633e-9, [0.0, 30.0], polarization=Polarization.TE
+            )
+
+    def test_negative_epsilon_superstrate_raises_clear_error(self, set_backend):
+        """A metallic superstrate hits the same guard, not a silent nan."""
+        stack = Stack(
+            superstrate=Material(epsilon=-2.0),
+            substrate=Material(epsilon=4.0),
+        )
+        with pytest.raises(ValueError, match="transparent superstrate"):
+            stratix.solve_angles(
+                stack, 633e-9, [0.0, 30.0], polarization=Polarization.TE
+            )
+
+    def test_length_one_array_wavelength_keeps_the_grid(self, set_backend):
+        """A length-1 array is an array, not a scalar: kx follows the grid."""
+        stack = Stack(
+            superstrate=Material(epsilon=1.0), substrate=Material(epsilon=2.25)
+        )
+        angles = [0.0, 30.0, 60.0]
+
+        arrayed = stratix.solve_angles(
+            stack, [633e-9], angles, polarization=Polarization.TE
+        )
+        scalar = stratix.solve_angles(
+            stack, 633e-9, angles, polarization=Polarization.TE
+        )
+
+        assert arrayed.R.shape == (1, 3)
+        assert arrayed.kx.shape == (1, 3)
+        assert scalar.kx.shape == (3,)
+        assert float(nd.max(nd.abs(arrayed.R - scalar.R))) < 1e-14
+
+    def test_field_profile_from_an_angle_sweep(self, set_backend):
+        """The Result carries intermediates, so field profiles work on it."""
+        stack = Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+            layers=[Layer(thickness=100e-9, material=Material(epsilon=4.0))],
+        )
+        result = stratix.solve_angles(
+            stack, 633e-9, [0.0, 30.0], polarization=Polarization.TE
+        )
+        z = nd.linspace(-50e-9, 150e-9, 7)
+        profile = stratix.compute_field_profile(result, z)
+        assert profile["E"].shape == (1, 2, 7)
+
+    def test_complex_epsilon_superstrate_still_works_through_solve(self, set_backend):
+        """The escape hatch named in the error message does work."""
+        stack = Stack(
+            superstrate=Material(epsilon=complex(2.25, 0.05)),
+            substrate=Material(epsilon=4.0),
+        )
+        result = stratix.solve(
+            stack, 633e-9, kx=0.0, polarization=Polarization.TE
+        )
+        assert 0.0 <= float(result.R[0, 0]) <= 1.0
+
+    def test_grad_through_wavelength(self, set_backend):
+        """nd.grad w.r.t. wavelength flows through solve_angles."""
+        if nd.get_backend() == "numpy":
+            pytest.skip("numpy backend does not support grad")
+
+        stack = Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+            layers=[Layer(thickness=100e-9, material=Material(epsilon=1.9))],
+        )
+
+        def f(wl):
+            return stratix.solve_angles(
+                stack, wl, 30.0, polarization=Polarization.TE
+            ).R[0, 0]
+
+        wl0 = 5e-7
+        grad_ad = float(nd.grad(f)(wl0))
+        h = 1e-11
+        grad_fd = (float(f(wl0 + h)) - float(f(wl0 - h))) / (2 * h)
+        rel = abs(grad_ad - grad_fd) / max(abs(grad_fd), 1e-12)
+        assert rel < 1e-4, f"AD={grad_ad}, FD={grad_fd}"
+
+    def test_grad_through_angle(self, set_backend):
+        """nd.grad w.r.t. the incidence angle flows through solve_angles."""
+        if nd.get_backend() == "numpy":
+            pytest.skip("numpy backend does not support grad")
+
+        stack = Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+        )
+
+        def f(theta):
+            return stratix.solve_angles(
+                stack, 633e-9, theta, polarization=Polarization.TE
+            ).R[0, 0]
+
+        theta0 = 35.0
+        grad_ad = float(nd.grad(f)(theta0))
+        h = 1e-5
+        grad_fd = (float(f(theta0 + h)) - float(f(theta0 - h))) / (2 * h)
+        rel = abs(grad_ad - grad_fd) / max(abs(grad_fd), 1e-12)
+        assert rel < 1e-5, f"AD={grad_ad}, FD={grad_fd}"
+
+    def test_grad_through_thickness(self, set_backend):
+        """nd.grad w.r.t. layer thickness flows through solve_angles."""
+        if nd.get_backend() == "numpy":
+            pytest.skip("numpy backend does not support grad")
+
+        stack = Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+            layers=[Layer(thickness=100e-9, material=Material(epsilon=4.0))],
+        )
+
+        def f(d):
+            return stratix.solve_angles(
+                stack, 633e-9, 30.0, polarization=Polarization.TE,
+                thicknesses=[d],
+            ).R[0, 0]
+
+        d0 = 100e-9
+        grad_ad = float(nd.grad(f)(d0))
+        h = 1e-13
+        grad_fd = (float(f(d0 + h)) - float(f(d0 - h))) / (2 * h)
+        rel = abs(grad_ad - grad_fd) / max(abs(grad_fd), 1e-12)
+        assert rel < 1e-4, f"AD={grad_ad}, FD={grad_fd}"

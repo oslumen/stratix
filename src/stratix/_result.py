@@ -36,7 +36,10 @@ class Result(NamedTuple):
     giving ``(n_layers, Nλ, Nk)``.
 
     ``wavelengths`` and ``kx`` stay 1-D, ``(Nλ,)`` and ``(Nk,)``: they name
-    the sweep coordinates rather than following the grid.
+    the sweep coordinates rather than following the grid.  The one
+    exception is :func:`~stratix.solve_angles` over an array of
+    wavelengths, where kx depends on the wavelength as well as the angle
+    and so follows the grid as ``(Nλ, n_angles)``.
 
     ``Polarization.BOTH`` prepends a TE/TM axis of size 2 to ``R``, ``T``,
     ``energy_balance`` and ``layer_absorption`` alike.
