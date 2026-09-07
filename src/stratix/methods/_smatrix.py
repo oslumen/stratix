@@ -12,6 +12,7 @@ from ._util import _rel_tol
 from ._util import _resolve_thicknesses
 from ._util import _safe_R
 from ._util import _safe_T
+from ._util import _wave_admittances
 
 #: A 2x2 S-matrix carried as its four components ``(S11, S12, S21, S22)``.
 #: The layer loop never assembles them into an array: stacking and
@@ -110,7 +111,7 @@ def _smatrix_solve(
     _omega, k0, kzs, _, _, denom_vals, no_flux = _medium_params(
         stack, wavelength, kx, polarization
     )
-    Zs = [kz / denom for kz, denom in zip(kzs, denom_vals, strict=True)]
+    Zs = _wave_admittances(kzs, denom_vals)
     n_interfaces = len(kzs) - 1
 
     kz0, denom0 = kzs[0], denom_vals[0]

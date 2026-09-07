@@ -16,6 +16,7 @@ from ._medium_params import _medium_params
 from ._util import _resolve_thicknesses
 from ._util import _safe_R
 from ._util import _safe_T
+from ._util import _wave_admittances
 
 
 def _abeles_solve(
@@ -28,7 +29,7 @@ def _abeles_solve(
     _omega, _k0, kzs, _, _, denom_vals, no_flux = _medium_params(
         stack, wavelength, kx, polarization
     )
-    Zs = [kz / denom for kz, denom in zip(kzs, denom_vals, strict=True)]
+    Zs = _wave_admittances(kzs, denom_vals)
     Z_0 = Zs[0]
     Z_s = Zs[-1]
 

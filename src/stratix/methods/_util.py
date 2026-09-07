@@ -53,6 +53,83 @@ def _resolve_thicknesses(
     return thicknesses
 
 
+def _wave_admittances(
+    kzs: list[nd.ndarray], denom_vals: list[nd.ndarray]
+) -> list[nd.ndarray]:
+    """Wave admittance ``Y = kz / denom`` for each medium.
+
+    ``denom`` is ``mu`` for TE and ``epsilon`` for TM, so one expression
+    covers both polarizations.  ``Y`` is the ratio of the tangential
+    magnetic to the tangential electric field carried by a single
+    forward-going plane wave, which is why every formulation in this
+    package -- Fresnel coefficients, the Abeles characteristic matrix, the
+    admittance recursion, the Dirichlet-to-Neumann kernel -- is written in
+    terms of it rather than in terms of ``kz`` and the material constant
+    separately.
+
+    Parameters
+    ----------
+    kzs : Out-of-plane wavevector per medium, superstrate first.
+    denom_vals : ``mu`` (TE) or ``epsilon`` (TM) per medium, same order.
+
+    Returns
+    -------
+    List of admittances, one per medium.
+    """
+    return [kz / denom for kz, denom in zip(kzs, denom_vals, strict=True)]
+
+
+def _layer_phases(kzs: list[nd.ndarray], thicknesses: nd.ndarray) -> list[nd.ndarray]:
+    """Phase thickness ``phi = kz * d`` for each layer.
+
+    ``kzs`` is indexed by *medium* and ``thicknesses`` by *layer*, and the
+    two are offset by one because ``kzs[0]`` is the superstrate.  Getting
+    that offset wrong shifts every layer's optical thickness onto its
+    neighbour, so it is resolved in one place rather than in each solver.
+
+    Parameters
+    ----------
+    kzs : Out-of-plane wavevector per medium, superstrate first.
+    thicknesses : Layer thicknesses, as resolved by
+        :func:`_resolve_thicknesses`.
+
+    Returns
+    -------
+    List of phase thicknesses, one per layer.
+    """
+    return [kzs[i + 1] * thicknesses[i] for i in range(len(kzs) - 2)]
+
+
+def _admittance_step(
+    Y_outer: nd.ndarray, Y_layer: nd.ndarray, phi: nd.ndarray
+) -> nd.ndarray:
+    """Transform an admittance across one layer.
+
+    The Moebius map that carries the admittance seen on one face of a layer
+    to the admittance seen on the other::
+
+        Y' = Y_layer * (Y + i*Y_layer*tan(phi)) / (Y_layer + i*Y*tan(phi))
+
+    The admittance recursion applies it twice per layer and in opposite
+    directions -- once walking up from the substrate to find the input
+    admittance, once walking back down to accumulate the transmitted
+    amplitude.  The two differ only in the sign of the phase, so passing
+    ``-phi`` covers the upward pass and no second body is needed.
+
+    Parameters
+    ----------
+    Y_outer : Admittance seen at the face being propagated from.
+    Y_layer : Wave admittance of the layer itself.
+    phi : Phase thickness ``kz * d``, negated to propagate the other way.
+
+    Returns
+    -------
+    Admittance seen at the opposite face.
+    """
+    t = nd.tan(phi)
+    return Y_layer * (Y_outer + 1j * Y_layer * t) / (Y_layer + 1j * Y_outer * t)
+
+
 def _no_incident_flux(
     kx: nd.ndarray, epsilon0: nd.ndarray, mu0: nd.ndarray, k0: nd.ndarray
 ) -> nd.ndarray:
