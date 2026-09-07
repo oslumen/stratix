@@ -3,10 +3,17 @@
 The power-flux formulas divide by the incident z-flux ``Re(kz0/denom0)``
 and the Redheffer star product divides by ``1 - A22*B11``.  Both are
 guarded, but the guards used to fire only on exact floating-point zero.
-Just past the critical angle, at grazing incidence, or with a faintly
-lossy superstrate, those quantities are tiny rather than zero, so the
-guard missed and the division blew up.  These tests pin the tolerant
-behaviour.
+Just past the critical angle or at grazing incidence those quantities are
+tiny rather than zero, so the guard missed and the division blew up.
+These tests pin the tolerant behaviour.
+
+The Redheffer guard is still the tolerance-based one #53 introduced.  The
+incident-flux guard is not: issue #57 showed that a tolerance on the
+residual flux decides the same physical input differently in single and
+double precision, and replaced it with the superstrate's light line,
+``|kx| >= Re(n_super)*k0``.  A lossy superstrate — the third regime this
+module originally covered — is refused outright now, because R and T do
+not partition energy there at all; see ``tests/test_lossy_superstrate.py``.
 """
 
 from __future__ import annotations
@@ -51,28 +58,53 @@ def _assert_bounded(R, T, where: str) -> None:
 
 
 class TestEvanescentIncidenceWithFaintLoss:
-    """A trace of superstrate loss must not unbound the flux ratio.
+    """A trace of superstrate loss is now refused rather than tolerated.
 
-    With a real superstrate an evanescent incident wave has ``Re(kz0)``
-    exactly zero and the old guard fired.  Adding even 1e-18j to epsilon
-    tips it to tiny-but-nonzero, and the ratio ``Re(kzN/denomN) /
-    Re(kz0/denom0)`` used to reach 1e18.
+    This class used to pin the opposite: that ``epsilon = 2.25 + 1e-18j``
+    past the light line came back agreeing with the lossless limit,
+    because the flux guard's ``sqrt(eps)`` tolerance swallowed the tiny
+    residual flux the loss produced.  Issue #57 showed the tolerance was
+    the whole mechanism — raise the loss a few decades and the guard
+    misses, ``T`` diverges as ``1/Im(epsilon)``, and which side of the
+    jump a given input lands on depends on the working precision.
+
+    Underneath that, R and T are not an energy partition for any lossy
+    superstrate, so there was no correct number to return at either end
+    of the range.  A lossy incident medium is refused instead, over the
+    whole range, down to the last imaginary part that is bigger than
+    double precision's rounding noise.
+    Boundedness past the light line is now pinned by
+    :class:`~tests.test_lossy_superstrate.TestRejectionIsDtypeIndependent`
+    on a lossless superstrate, where it is well defined.
     """
 
-    @pytest.mark.parametrize("loss", [1e-18, 1e-15, 1e-12, 1e-9])
+    # ``1e-18``, which this class used to sample, is gone: against a real
+    # part of 2.25 it sits below double precision's noise floor, so it is
+    # not a loss anyone can have meant and is accepted as lossless.  That
+    # end of the range is pinned by
+    # :class:`~tests.test_lossy_superstrate.TestRoundingNoiseIsNotLoss`.
+    @pytest.mark.parametrize("loss", [1e-15, 1e-12, 1e-9])
     @pytest.mark.parametrize("pol", [Polarization.TE, Polarization.TM])
-    def test_faint_loss_matches_the_lossless_limit(self, set_backend, loss, pol):
+    def test_faint_loss_is_refused_like_any_other_loss(self, set_backend, loss, pol):
         k0 = 2 * nd.pi / _WL
         kx = 1.5 * k0 * 1.2  # beyond the superstrate light line
 
-        lossless = stratix.solve(_stack(), _WL, kx=kx, polarization=pol)
-        lossy = stratix.solve(
-            _stack(superstrate_eps=2.25 + 1j * loss), _WL, kx=kx, polarization=pol
-        )
+        with pytest.raises(ValueError, match="lossless superstrate"):
+            stratix.solve(
+                _stack(superstrate_eps=2.25 + 1j * loss), _WL, kx=kx, polarization=pol
+            )
 
-        _assert_bounded(lossy.R[0, 0], lossy.T[0, 0], f"loss={loss:g}, {pol.name}")
-        assert float(lossy.R[0, 0]) == pytest.approx(float(lossless.R[0, 0]), abs=1e-6)
-        assert float(lossy.T[0, 0]) == pytest.approx(float(lossless.T[0, 0]), abs=1e-6)
+    @pytest.mark.parametrize("pol", [Polarization.TE, Polarization.TM])
+    def test_the_lossless_limit_itself_stays_bounded(self, set_backend, pol):
+        """What the faint-loss stacks were standing in for is still checked."""
+        k0 = 2 * nd.pi / _WL
+        kx = 1.5 * k0 * 1.2
+
+        result = stratix.solve(_stack(), _WL, kx=kx, polarization=pol)
+
+        _assert_bounded(result.R[0, 0], result.T[0, 0], f"lossless, {pol.name}")
+        assert float(result.R[0, 0]) == pytest.approx(1.0, abs=1e-12)
+        assert float(result.T[0, 0]) == pytest.approx(0.0, abs=1e-12)
 
 
 class TestCriticalAngleSweep:
@@ -126,6 +158,7 @@ class TestCriticalAngleSweep:
 #: also reject an integer early-out such as ``if n_layers == 0``, which is
 #: exact by construction and has nothing to do with float tolerance.
 GUARD_FUNCTIONS = {
+    ("stratix.methods._medium_params", "_imaginary_part_is_negligible"),
     ("stratix.methods._util", "_no_incident_flux"),
     ("stratix.methods._util", "_safe_R"),
     ("stratix.methods._util", "_safe_T"),
@@ -141,11 +174,15 @@ class TestNoExactZeroComparisons:
         import ast
         from pathlib import Path
 
+        import stratix.methods._medium_params as medium_mod
         import stratix.methods._smatrix as smatrix_mod
         import stratix.methods._util as util_mod
         from stratix import _absorption as absorption_mod
 
-        modules = {m.__name__: m for m in (util_mod, smatrix_mod, absorption_mod)}
+        modules = {
+            m.__name__: m
+            for m in (util_mod, smatrix_mod, absorption_mod, medium_mod)
+        }
         checked = set()
 
         for module_name, module in modules.items():
@@ -221,11 +258,17 @@ class TestAbsorptionGuard:
     """Per-layer absorption divides by the same incident flux."""
 
     @pytest.mark.parametrize("pol", [Polarization.TE, Polarization.TM])
-    def test_absorption_bounded_under_faint_loss(self, set_backend, pol):
+    def test_absorption_bounded_past_the_light_line(self, set_backend, pol):
+        """A lossy layer under evanescent illumination absorbs nothing.
+
+        The loss sits in the layer, where it is well posed.  The
+        superstrate is lossless: a lossy one is refused outright now, so
+        the guard can no longer be probed through it (issue #57).
+        """
         k0 = 2 * nd.pi / _WL
         kx = 1.5 * k0 * 1.2
         stack = Stack(
-            superstrate=Material(epsilon=2.25 + 1e-18j),
+            superstrate=Material(epsilon=2.25),
             substrate=Material(epsilon=9.0),
             layers=[Layer(thickness=100e-9, material=Material(epsilon=4.0 + 0.1j))],
         )
@@ -244,10 +287,11 @@ class TestAbsorptionGuard:
 class TestAllMethodsShareTheGuard:
     """Every method routes R and T through the same tolerance guard.
 
-    ``_safe_R`` and ``_safe_T`` gained a ``k0`` argument, and each of the
-    four solvers had to be rewired to pass it.  The default-method tests
-    above only exercise the S-matrix path, so the wiring in the other
-    three would otherwise go unchecked.
+    ``_safe_R`` and ``_safe_T`` no longer take the wavevectors the guard
+    is computed from: the mask is built once in ``_medium_params`` and
+    handed to them, and each of the four solvers had to be rewired to
+    pass it.  The default-method tests above only exercise the S-matrix
+    path, so the wiring in the other three would otherwise go unchecked.
     """
 
     @pytest.mark.parametrize(
@@ -276,27 +320,18 @@ class TestAllMethodsShareTheGuard:
 
 
 class TestGuardFiresOnlyOnCollapsedFlux:
-    """The guard keys on flux *magnitude*, never on its sign.
+    """The guard keys on the light line, never on the sign of the flux.
 
-    ``Re(kz0/denom0)`` also comes out large and negative for a gain or
-    negative-index superstrate, because ``_kz_single`` picks the wrong
-    branch there.  That is a separate pre-existing problem.  Folding it
-    into this guard would answer ``R = 1, T = 0`` — a physically plausible
-    result for an ordinary propagating wave — and bury it.
+    ``Re(kz0/denom0)`` comes out large and *negative* for a negative-index
+    superstrate, because ``_kz_single`` picks the wrong branch there.
+    That is a separate pre-existing problem.  Folding it into this guard
+    would answer ``R = 1, T = 0`` — a physically plausible result for an
+    ordinary propagating wave — and bury it.
     """
 
-    @pytest.mark.parametrize(
-        ("superstrate", "label"),
-        [
-            (Material(epsilon=-2.25, mu=-1.0), "negative index"),
-            (Material(epsilon=2.25 - 1e-6j), "gain"),
-        ],
-    )
-    def test_negative_flux_is_not_reported_as_no_flux(
-        self, set_backend, superstrate, label
-    ):
+    def test_negative_flux_is_not_reported_as_no_flux(self, set_backend):
         stack = Stack(
-            superstrate=superstrate,
+            superstrate=Material(epsilon=-2.25, mu=-1.0),
             substrate=Material(epsilon=9.0),
             layers=[Layer(thickness=100e-9, material=Material(epsilon=4.0))],
         )
@@ -305,21 +340,43 @@ class TestGuardFiresOnlyOnCollapsedFlux:
 
         R, T = float(result.R[0, 0]), float(result.T[0, 0])
         assert (R, T) != (1.0, 0.0), (
-            f"{label} superstrate took the no-flux branch: a propagating wave "
-            "was reported as carrying no power"
+            "negative index superstrate took the no-flux branch: a "
+            "propagating wave was reported as carrying no power"
         )
 
-    def test_guard_fires_on_zero_and_not_on_unit_flux(self, set_backend):
+    def test_a_gain_superstrate_is_refused_rather_than_guarded(self, set_backend):
+        """Gain used to reach the guard; it no longer reaches the solver.
+
+        ``epsilon = 2.25 - 1e-6j`` is the mirror image of the loss case:
+        the incident and reflected waves share the medium and their cross
+        term carries flux that R and T do not account for.  Refusing it
+        is what keeps this class's question — does the guard misfire on a
+        negative flux? — about the branch choice alone.
+        """
+        stack = Stack(
+            superstrate=Material(epsilon=2.25 - 1e-6j),
+            substrate=Material(epsilon=9.0),
+            layers=[Layer(thickness=100e-9, material=Material(epsilon=4.0))],
+        )
+
+        with pytest.raises(ValueError, match="lossless superstrate"):
+            stratix.solve(stack, _WL, kx=0.0, polarization=Polarization.TE)
+
+    def test_guard_fires_past_the_light_line_and_not_inside_it(self, set_backend):
         from stratix.methods._util import _no_incident_flux
 
         k0 = nd.array(2 * nd.pi / _WL)
-        one = nd.array(1.0 + 0j)
+        eps, mu = nd.array(2.25), nd.array(1.0)  # n = 1.5
 
-        # kz0 = 0: grazing incidence, no flux.
-        assert bool(_no_incident_flux(nd.array(0.0 + 0j), one, k0))
-        # kz0 purely imaginary: evanescent, no flux.
-        assert bool(_no_incident_flux(nd.array(1j) * k0, one, k0))
-        # kz0 = k0: ordinary propagating incidence, flux present.
-        assert not bool(_no_incident_flux(k0 + 0j, one, k0))
-        # kz0 = -k0: large negative, wrong branch — not a collapsed flux.
-        assert not bool(_no_incident_flux(-k0 + 0j, one, k0))
+        # Inside the light cone: an ordinary propagating wave.
+        assert not bool(_no_incident_flux(nd.array(0.0), eps, mu, k0))
+        assert not bool(_no_incident_flux(nd.array(1.4) * k0, eps, mu, k0))
+        # On it: kz0 = 0, grazing incidence, nothing enters.
+        assert bool(_no_incident_flux(nd.array(1.5) * k0, eps, mu, k0))
+        # Past it: evanescent.
+        assert bool(_no_incident_flux(nd.array(1.6) * k0, eps, mu, k0))
+        # A negative-index superstrate has a real index, so the light line
+        # is where it always was and normal incidence propagates.
+        assert not bool(
+            _no_incident_flux(nd.array(0.0), nd.array(-2.25), nd.array(-1.0), k0)
+        )

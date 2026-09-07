@@ -640,16 +640,38 @@ class TestSolveAnglesVectorized:
         profile = stratix.compute_field_profile(result, z)
         assert profile["E"].shape == (1, 2, 7)
 
-    def test_complex_epsilon_superstrate_still_works_through_solve(self, set_backend):
-        """The escape hatch named in the error message does work."""
+    def test_metallic_superstrate_still_works_through_solve(self, set_backend):
+        """The escape hatch named in the error message does work.
+
+        ``solve_angles`` refuses ``eps*mu < 0`` only because it cannot map
+        an angle to a real kx there.  ``solve()`` takes kx directly, and a
+        metallic superstrate is perfectly well posed for it: nothing
+        propagates in the incident medium, so every kx is evanescent and
+        the answer is R = 1, T = 0.
+        """
         stack = Stack(
-            superstrate=Material(epsilon=complex(2.25, 0.05)),
+            superstrate=Material(epsilon=-2.0),
             substrate=Material(epsilon=4.0),
         )
         result = stratix.solve(
             stack, 633e-9, kx=0.0, polarization=Polarization.TE
         )
-        assert 0.0 <= float(result.R[0, 0]) <= 1.0
+        assert float(result.R[0, 0]) == pytest.approx(1.0)
+        assert float(result.T[0, 0]) == pytest.approx(0.0)
+
+    def test_absorbing_superstrate_is_refused_by_solve_too(self, set_backend):
+        """The other half of the message: for loss there is no escape hatch.
+
+        ``solve()`` used to accept a lossy superstrate and hand back R and
+        T that did not partition energy (issue #57).  It now refuses, so
+        the error text must not promise a way around it.
+        """
+        stack = Stack(
+            superstrate=Material(epsilon=complex(2.25, 0.05)),
+            substrate=Material(epsilon=4.0),
+        )
+        with pytest.raises(ValueError, match="lossless superstrate"):
+            stratix.solve(stack, 633e-9, kx=0.0, polarization=Polarization.TE)
 
     def test_grad_through_wavelength(self, set_backend):
         """nd.grad w.r.t. wavelength flows through solve_angles."""

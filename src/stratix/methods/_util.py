@@ -54,86 +54,77 @@ def _resolve_thicknesses(
 
 
 def _no_incident_flux(
-    kz0: nd.ndarray, denom0: nd.ndarray, k0: nd.ndarray
+    kx: nd.ndarray, epsilon0: nd.ndarray, mu0: nd.ndarray, k0: nd.ndarray
 ) -> nd.ndarray:
-    """Boolean mask: the incident wave carries no usable z-directed flux.
+    """Boolean mask: the incident wave carries no z-directed flux.
 
-    The flux normalisation is ``Re(kz0/denom0)``, and both R and T divide
-    by it.  It has to be compared against a scale rather than against
-    zero, because two distinct regimes drive it arbitrarily close to zero
-    without landing exactly on it:
+    Both R and T divide by the incident flux ``Re(kz0/denom0)``, so the
+    regime where that flux vanishes has to be identified before the
+    division rather than repaired after it.  The criterion is the
+    superstrate's own light line::
 
-    * **Evanescent incidence.**  Past the superstrate's light line
-      ``kz0`` is imaginary, so a lossless medium gives exactly zero.  A
-      trace of loss (any complex ``epsilon`` or ``mu``) tips the real
-      part to a tiny non-zero value instead, and the flux ratio then
-      diverges as ``1/loss``.  The natural scale here is the wave's own
-      magnitude ``|kz0|``: the wave is evanescent when its real part is
-      negligible against it.
-    * **Grazing incidence.**  As ``theta -> 90 deg`` the whole of ``kz0``
-      collapses, so ``Re(kz0)`` is not small against ``|kz0|`` — it is
-      small against the vacuum wavevector ``k0``.
+        |kx| >= Re(n_super) * k0,   n_super = sqrt(epsilon0 * mu0)
 
-    Taking ``max(|kz0|, k0)`` as the scale covers both: the guard fires
-    when the incident flux is negligible against the larger of the wave's
-    own size and the vacuum scale.  ``denom0`` divides through unchanged,
-    so it cancels from the comparison up to its magnitude.
+    which is where ``kz0**2 = epsilon0*mu0*k0**2 - kx**2`` stops being
+    positive.  Inside the light cone ``kz0`` is real and the wave
+    propagates; on the line it is exactly zero (grazing incidence); past
+    it ``kz0`` is imaginary and the wave is evanescent.  Taking ``>=``
+    rather than ``>`` folds exact grazing in with the evanescent side,
+    which is where it belongs: no power crosses the first interface
+    either way.
 
-    The comparison is on the *magnitude* ``|Re(kz0/denom0)|``, so the
-    guard fires only where the flux is negligible.  A normalisation that
-    is large and negative — the branch convention picks the wrong sign in
-    a gain or negative-index superstrate — is a separate, pre-existing
-    problem in ``_kz_single``, not a collapsed flux.  Folding it in here
-    would report ``R = 1, T = 0`` for an ordinary propagating wave and
-    hide that problem behind a physically plausible answer.
+    The comparison is between two computed wavevectors, so it says the
+    same thing at every working precision — unlike a tolerance on the
+    residual flux, which decides the same physical input differently in
+    single and double precision (issue #57).  Only the ulp of representing
+    ``kx`` itself is left, against the multi-decade band the tolerance had.
 
-    .. warning::
+    The formula assumes ``epsilon0 * mu0`` is real: ``Re(sqrt(eps*mu))``
+    is not the light line otherwise, since a complex ``eps*mu`` has no
+    sharp propagating/evanescent boundary to find.
+    :func:`~stratix.methods._medium_params._reject_lossy_superstrate`
+    normally rules that out — R and T do not partition energy there — but
+    it cannot read a tracer, so a lossy superstrate can still reach this
+    function inside a dispersive ``nd.jit`` trace.  The mask is then
+    approximate rather than wrong-by-construction, which is the best that
+    is available without a concrete value to branch on.
 
-       The threshold is set by float precision, not by physics, and that
-       is a known defect — see issue #57.  Past the superstrate's light
-       line with genuine loss, ``T`` diverges as ``1/Im(epsilon)`` while
-       ``|r|^2`` stays finite, so the guard's ``sqrt(eps)`` cut-off puts a
-       seven-decade jump in ``T`` at a dtype-dependent location: at
-       ``Im(epsilon) = 1e-7`` single precision answers ``T = 0`` and
-       double answers ``T = 1.5e7``.  The correct criterion is the
-       loss-independent light line ``kx > Re(n_super) * k0``.
+    A metallic superstrate (``epsilon0 * mu0 < 0``) has ``Re(n_super) =
+    0``, so the mask covers every kx including normal incidence — correct,
+    since nothing propagates in it.  A negative-index superstrate
+    (``epsilon0 < 0`` *and* ``mu0 < 0``) has a real index and is not
+    masked, even though ``Re(kz0/denom0)`` comes out large and negative
+    there: that sign is a branch-choice problem in ``_kz_single``, and
+    reporting it as ``R = 1, T = 0`` — a plausible-looking answer for an
+    ordinary propagating wave — would bury it.
 
-       More broadly, ``R`` and ``T`` are not an energy partition for *any*
-       lossy superstrate, evanescent or not: the incident and reflected
-       waves share that medium, and their cross term carries real
-       z-directed flux that ``|r|^2`` and ``T`` do not account for.
-       ``R + T + sum(A)`` measures 1.00082 at ``Im(epsilon) = 0.01`` and
-       1.124 at ``Im(epsilon) = 1``.  A lossy *substrate* is unaffected —
-       it holds a single outgoing wave, so its flux is unambiguous and
-       energy balance closes exactly.
+    ``|kx|`` because ``kz0`` depends on ``kx**2``: the guard has to be
+    symmetric in the in-plane direction, as the physics is.
 
     Parameters
     ----------
-    kz0 : Out-of-plane wavevector in the incident medium.
-    denom0 : ``mu`` for TE, ``epsilon`` for TM, in the incident medium.
-    k0 : Vacuum wavevector, the natural scale for a wavevector ratio.
+    kx : In-plane wavevector component.
+    epsilon0, mu0 : Permittivity and permeability of the incident medium.
+    k0 : Vacuum wavevector.
 
     Returns
     -------
     Boolean ndarray broadcasting with the sweep shape.
     """
-    z0_real = nd.real(kz0 / denom0)
-    scale = nd.maximum(nd.abs(kz0), nd.abs(k0)) / nd.abs(denom0)
-    return nd.abs(z0_real) <= _rel_tol() * scale
+    n_super = nd.sqrt(epsilon0 * mu0 + 0j)
+    return nd.abs(kx) >= nd.real(n_super) * nd.abs(k0)
 
 
-def _safe_R(
-    r_coeff: nd.ndarray, kz0: nd.ndarray, denom0: nd.ndarray, k0: nd.ndarray
-) -> nd.ndarray:
+def _safe_R(r_coeff: nd.ndarray, no_flux: nd.ndarray) -> nd.ndarray:
     """Compute power reflectance; returns 1 when no flux enters the stack.
 
     The standard formula ``R = |r|^2`` assumes a propagating incident
-    wave.  When the incident medium carries no usable z-directed flux —
-    evanescent or grazing incidence, see :func:`_no_incident_flux` — no
-    power flows in the +z direction, so the physical reflectance is 1.
+    wave.  When the incident medium carries none — evanescent or grazing
+    incidence, see :func:`_no_incident_flux` — no power flows in the +z
+    direction, so the physical reflectance is 1.
     """
     raw = nd.abs(r_coeff) ** 2
-    return nd.where(_no_incident_flux(kz0, denom0, k0), nd.ones_like(raw), raw)
+    return nd.where(no_flux, nd.ones_like(raw), raw)
 
 
 def _safe_T(
@@ -142,18 +133,19 @@ def _safe_T(
     denom0: nd.ndarray,
     kzN: nd.ndarray,
     denomN: nd.ndarray,
-    k0: nd.ndarray,
+    no_flux: nd.ndarray,
 ) -> nd.ndarray:
     """Compute power transmittance; returns 0 when no flux enters the stack.
 
     The standard formula ``T = Re(kzN/denomN) / Re(kz0/denom0) * |t|^2``
     assumes a propagating incident wave.  When the incident medium
-    carries no usable z-directed flux — evanescent or grazing incidence,
-    see :func:`_no_incident_flux` — no power is carried toward the stack,
-    so the physical transmittance is 0.
+    carries none — evanescent or grazing incidence, see
+    :func:`_no_incident_flux` — no power is carried toward the stack, so
+    the physical transmittance is 0.  The denominator is substituted
+    before the division rather than after, so the masked entries never
+    evaluate ``0/0`` and never put a NaN on an autodiff tape.
     """
     z0_real = nd.real(kz0 / denom0)
-    no_flux = _no_incident_flux(kz0, denom0, k0)
     safe_z0 = nd.where(no_flux, nd.ones_like(z0_real), z0_real)
     raw = nd.real(kzN / denomN) / safe_z0 * nd.abs(t_coeff) ** 2
     return nd.where(no_flux, nd.zeros_like(raw), raw)

@@ -25,7 +25,7 @@ def _admittance_solve(
     polarization: Polarization,
     thicknesses: nd.ndarray | None = None,
 ) -> tuple[nd.ndarray, nd.ndarray, dict]:
-    _omega, k0, kzs, _, _, denom_vals = _medium_params(
+    _omega, _k0, kzs, _, _, denom_vals, no_flux = _medium_params(
         stack, wavelength, kx, polarization
     )
 
@@ -43,7 +43,7 @@ def _admittance_solve(
 
     r = (Y_super - Y_in) / (Y_super + Y_in)
     kz0, denom0 = kzs[0], denom_vals[0]
-    R = _safe_R(r, kz0, denom0, k0)
+    R = _safe_R(r, no_flux)
 
     E = nd.array(1.0) + r
     Y_current = Y_in
@@ -58,6 +58,6 @@ def _admittance_solve(
         Y_current = Y_layer * (Y_current + 1j * Y_layer * t) / (Y_layer + 1j * Y_current * t)
 
     t_total = E
-    T = _safe_T(t_total, kz0, denom0, kzs[-1], denom_vals[-1], k0)
+    T = _safe_T(t_total, kz0, denom0, kzs[-1], denom_vals[-1], no_flux)
 
     return R, T, {"thicknesses": _d}

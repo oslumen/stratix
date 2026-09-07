@@ -13,7 +13,6 @@ from __future__ import annotations
 import numdiff as nd
 
 from ._amplitudes import _medium_amplitudes
-from .methods._util import _no_incident_flux
 
 
 def _flux(admittance: nd.ndarray, A: nd.ndarray, B: nd.ndarray) -> nd.ndarray:
@@ -50,11 +49,13 @@ def _layer_absorption(intermediates: dict) -> list:
     List of length ``n_layers``.  Each entry has the sweep shape of the
     solve (0-D for scalar wavelength/kx inputs).  Evanescent and grazing
     incidence carry no power into the stack, so every layer reports 0
-    there — the same tolerance-based guard R and T use.
+    there — the same light-line guard R and T use, read off the solve
+    rather than recomputed, so the three can never disagree about which
+    sweep points are cut off.
     """
-    k0 = intermediates["k0"]
     kzs: list = intermediates["kzs"]
     denom_vals: list = intermediates["denom_vals"]
+    no_flux = intermediates["no_flux"]
 
     n_media = len(kzs)
     n_layers = n_media - 2
@@ -64,7 +65,6 @@ def _layer_absorption(intermediates: dict) -> list:
     A_left, B_left, A_right, B_right = _medium_amplitudes(intermediates)
 
     incident = nd.real(kzs[0] / denom_vals[0])
-    no_flux = _no_incident_flux(kzs[0], denom_vals[0], k0)
     safe_incident = nd.where(no_flux, nd.ones_like(incident), incident)
 
     absorption = []

@@ -229,6 +229,35 @@ def solve(
     -------
     Result with ``R``, ``T``, and metadata fields.
 
+    Raises
+    ------
+    ValueError
+        If the superstrate is not lossless — either ``epsilon`` or ``mu``
+        having a non-zero imaginary part.  ``R = |r|^2`` and ``T`` are an
+        energy partition only when the incident medium is transparent:
+        that medium carries both the incident and the reflected wave, and
+        in a lossy or gain medium their cross term carries real
+        z-directed flux that neither term accounts for, so
+        ``R + T + Σ(absorption)`` does not close.  ``|r|^2`` is taken at
+        the first interface on top of that, which makes ``R`` depend on
+        where the detector sits.  Rather than return numbers that quietly
+        fail to partition energy, the stack is refused.
+
+        A lossy or metallic **substrate** is fine and needs no change: it
+        is semi-infinite and holds a single outgoing wave, so its flux is
+        unambiguous and energy balance closes exactly.  A superstrate with
+        real but negative ``epsilon`` and/or ``mu`` is also accepted; past
+        its light line every ``kx`` is evanescent, and ``solve()`` reports
+        ``R = 1, T = 0`` there.
+
+    Notes
+    -----
+    Incidence past the superstrate's light line — ``|kx| >= Re(n_super)·k0``,
+    which includes exact grazing — carries no power into the stack, so
+    ``R = 1``, ``T = 0`` and every layer absorbs nothing.  The cut-off is a
+    comparison of wavevectors, so it falls at the same physical place in
+    single and double precision.
+
     Shapes
     ------
     ``R`` and ``T`` are always ``(Nλ, Nk)``; a scalar ``wavelength`` or

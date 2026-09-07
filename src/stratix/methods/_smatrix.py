@@ -107,7 +107,7 @@ def _smatrix_solve(
         interface coefficients from these on demand, so no per-layer
         matrix is retained by a solve that was not asked for one.
     """
-    _omega, k0, kzs, _, _, denom_vals = _medium_params(
+    _omega, k0, kzs, _, _, denom_vals, no_flux = _medium_params(
         stack, wavelength, kx, polarization
     )
     Zs = [kz / denom for kz, denom in zip(kzs, denom_vals, strict=True)]
@@ -127,13 +127,17 @@ def _smatrix_solve(
     r_total = S_total[0]
     t_total = S_total[2]
 
-    R = _safe_R(r_total, kz0, denom0, k0)
-    T = _safe_T(t_total, kz0, denom0, kzs[-1], denom_vals[-1], k0)
+    R = _safe_R(r_total, no_flux)
+    T = _safe_T(t_total, kz0, denom0, kzs[-1], denom_vals[-1], no_flux)
 
     intermediates = {
         "k0": k0,
         "kzs": kzs,
         "denom_vals": denom_vals,
+        # Carried rather than recomputed: per-layer absorption divides
+        # by the same incident flux R and T do, and must be cut off at
+        # exactly the same sweep points.
+        "no_flux": no_flux,
         "r_total": r_total,
         "t_total": t_total,
         "thicknesses": _thicknesses,

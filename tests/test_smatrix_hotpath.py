@@ -22,11 +22,14 @@ from stratix.methods._util import _interface_coeffs
 
 #: Keys the S-matrix solver is allowed to hand back.  Every entry is a
 #: per-medium or whole-stack quantity the solve computed anyway; nothing
-#: is accumulated per layer.
+#: is accumulated per layer.  ``no_flux`` is one boolean per sweep point,
+#: not per layer: absorption has to cut off at exactly the sweep points R
+#: and T do, and carrying the mask is cheaper than recomputing it.
 LEAN_INTERMEDIATE_KEYS = {
     "k0",
     "kzs",
     "denom_vals",
+    "no_flux",
     "r_total",
     "t_total",
     "thicknesses",

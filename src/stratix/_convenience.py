@@ -14,6 +14,7 @@ from ._solve import _sweep_axis
 from ._solve import _validate_thicknesses
 from ._solve import solve
 from ._types import Method
+from .methods._medium_params import _imaginary_part_is_negligible
 
 _C0: float = 299792458.0  # speed of light in vacuum (m/s)
 
@@ -62,7 +63,11 @@ def solve_angles(
         If the superstrate is absorbing or metallic.  A complex index makes
         kx = n(ω)·k0·sin θ complex, and R and T stop being ``|r|²`` and the
         z-flux ratio, so the angle no longer names a meaningful sweep
-        point.  :func:`solve` still accepts such a kx explicitly.
+        point.  For a *metallic* superstrate — ``eps·mu`` real but negative
+        — :func:`solve` still accepts an explicit kx and reports the
+        evanescent ``R = 1, T = 0``.  An *absorbing* one it does not: a
+        lossy incident medium makes R and T stop partitioning energy at
+        all, so :func:`solve` refuses it too.
 
     Shapes
     ------
@@ -100,18 +105,22 @@ def solve_angles(
     )
 
     # n = sqrt(eps·mu) is real only where eps·mu is real and non-negative,
-    # and kx is real only where n is.  ``x - real(x)`` is the imaginary
-    # part; it stands in for ``nd.imag``, which torch refuses on a real
-    # tensor ("imag is not implemented for tensors with non-complex
-    # dtypes").
-    imaginary = bool(nd.any(nd.abs(eps_mu - nd.real(eps_mu)) != 0))
+    # and kx is real only where n is.  The imaginary part is judged by the
+    # same predicate ``solve()`` rejects a lossy superstrate with, so a
+    # medium that is lossless to within rounding noise — ``2.25*(1+1e-16j)``
+    # from complex arithmetic, or a zero-damping oscillator model — is
+    # accepted by both entry points or by neither.
+    imaginary = _imaginary_part_is_negligible(eps_mu) is False
     if imaginary or bool(nd.any(nd.real(eps_mu) < 0)):
         raise ValueError(
             "solve_angles needs a transparent superstrate: an angle maps to "
             "kx = n(omega)*k0*sin(theta), which is complex unless eps*mu is "
             f"real and non-negative (got {eps_mu}).  R and T are then no "
-            "longer |r|^2 and the z-flux ratio.  Call solve() with an "
-            "explicit kx to drive an absorbing or metallic superstrate anyway."
+            "longer |r|^2 and the z-flux ratio.  A metallic superstrate "
+            "(eps*mu real and negative) can still be driven by calling "
+            "solve() with an explicit kx; an absorbing one cannot, because "
+            "R and T stop partitioning energy there -- solve() rejects it "
+            "for the same reason."
         )
 
     n_super = nd.sqrt(eps_mu)
