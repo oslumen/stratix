@@ -1,9 +1,10 @@
 """Full-stack forward/backward wave amplitude reconstruction.
 
 The S-matrix solver returns the overall reflection and transmission
-coefficients plus the per-interface S-matrices.  Field profiles and
-per-layer absorption both need the amplitude of the forward and backward
-travelling wave *inside* every medium, so the reconstruction lives here
+coefficients plus the per-medium wavevectors it computed on the way.
+Field profiles and per-layer absorption both need the amplitude of the
+forward and backward travelling wave *inside* every medium, so the
+recursion that rebuilds the interfaces and walks them back lives here
 once and is shared by both consumers.
 
 Amplitudes are normalised to a unit-amplitude incident wave in the
@@ -14,6 +15,8 @@ with the ``R``/``T`` returned by the solver.
 from __future__ import annotations
 
 import numdiff as nd
+
+from .methods._util import _interface_coeffs
 
 
 def _medium_amplitudes(intermediates: dict) -> tuple[list, list, list, list]:
@@ -27,7 +30,10 @@ def _medium_amplitudes(intermediates: dict) -> tuple[list, list, list, list]:
 
     Parameters
     ----------
-    intermediates : Dict returned by :func:`_smatrix_solve`.
+    intermediates : Dict returned by :func:`_smatrix_solve`.  The
+        interface coefficients are rebuilt here from its per-medium
+        wavevectors, so a solve that never reaches this recursion pays
+        nothing for them.
 
     Returns
     -------
@@ -40,11 +46,12 @@ def _medium_amplitudes(intermediates: dict) -> tuple[list, list, list, list]:
         substrate the two references coincide.
     """
     kzs: list = intermediates["kzs"]
+    denom_vals: list = intermediates["denom_vals"]
     t_total = intermediates["t_total"]
-    interface_smatrices: list = intermediates["interface_smatrices"]
     thicknesses = intermediates["thicknesses"]
 
     n_media = len(kzs)
+    Zs = [kz / denom for kz, denom in zip(kzs, denom_vals, strict=True)]
     zero = t_total * 0
 
     A_left: list = [None] * n_media
@@ -58,10 +65,10 @@ def _medium_amplitudes(intermediates: dict) -> tuple[list, list, list, list]:
     B_right[-1] = zero
 
     for k in range(n_media - 2, -1, -1):
-        S_int = interface_smatrices[k]
-        r = S_int[0, 0]
-        t_fwd = S_int[1, 0]
-        t_rev = S_int[0, 1]
+        # Rebuild interface k rather than reading a retained matrix: the
+        # solve keeps no per-layer data, and the coefficients are a
+        # handful of scalar operations on impedances it already has.
+        r, t_rev, t_fwd, _ = _interface_coeffs(Zs[k], Zs[k + 1])
 
         a_exit = (A_left[k + 1] + r * B_left[k + 1]) / t_fwd
         b_exit = r * a_exit + t_rev * B_left[k + 1]

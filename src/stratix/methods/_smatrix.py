@@ -7,27 +7,32 @@ from phokaia import Polarization
 from phokaia import Stack
 
 from ._medium_params import _medium_params
+from ._util import _interface_coeffs
 from ._util import _resolve_thicknesses
 from ._util import _safe_R
 from ._util import _safe_T
 
+#: A 2x2 S-matrix carried as its four components ``(S11, S12, S21, S22)``.
+#: The layer loop never assembles them into an array: stacking and
+#: re-indexing a 2x2 of full sweep grids costs two allocations per
+#: combination and buys nothing the scalar form does not give.
+_Components = tuple[nd.ndarray, nd.ndarray, nd.ndarray, nd.ndarray]
 
-def _redheffer_star(S_A: nd.ndarray, S_B: nd.ndarray) -> nd.ndarray:
-    """Combine two 2x2 S-matrices via the Redheffer star product.
+
+def _redheffer_star(S_A: _Components, S_B: _Components) -> _Components:
+    """Combine two S-matrices, given component-wise, via the star product.
 
     Parameters
     ----------
-    S_A : 2x2 ndarray (left-hand S-matrix).
-    S_B : 2x2 ndarray (right-hand S-matrix).
+    S_A : Components ``(A11, A12, A21, A22)`` of the left-hand S-matrix.
+    S_B : Components ``(B11, B12, B21, B22)`` of the right-hand S-matrix.
 
     Returns
     -------
-    2x2 ndarray: S_A (x) S_B.
+    Components of ``S_A (x) S_B``.
     """
-    A11, A12 = S_A[0, 0], S_A[0, 1]
-    A21, A22 = S_A[1, 0], S_A[1, 1]
-    B11, B12 = S_B[0, 0], S_B[0, 1]
-    B21, B22 = S_B[1, 0], S_B[1, 1]
+    A11, A12, A21, A22 = S_A
+    B11, B12, B21, B22 = S_B
 
     denom = 1.0 - A22 * B11
     safe_denom = nd.where(denom == 0, nd.ones_like(denom), denom)
@@ -36,42 +41,28 @@ def _redheffer_star(S_A: nd.ndarray, S_B: nd.ndarray) -> nd.ndarray:
     S21 = B21 * A21 / safe_denom
     S22 = B22 + B21 * A22 * B12 / safe_denom
 
-    return nd.stack([nd.stack([S11, S12]), nd.stack([S21, S22])])
+    return S11, S12, S21, S22
 
 
-def _interface_smatrix(Z_left: nd.ndarray, Z_right: nd.ndarray) -> nd.ndarray:
-    """Build the 2x2 interface S-matrix from wave impedances.
+def _propagation_star(S_A: _Components, p: nd.ndarray) -> _Components:
+    """Combine an S-matrix with a layer's propagation S-matrix.
 
-    Parameters
-    ----------
-    Z_left : Wave impedance of the incident medium.
-    Z_right : Wave impedance of the transmitted medium.
-
-    Returns
-    -------
-    2x2 ndarray [[r, t_rev], [t_fwd, -r]].
-    """
-    r = (Z_left - Z_right) / (Z_left + Z_right)
-    t_fwd = 2 * Z_left / (Z_left + Z_right)
-    t_rev = 2 * Z_right / (Z_left + Z_right)
-    return nd.stack([nd.stack([r, t_rev]), nd.stack([t_fwd, -r])])
-
-
-def _propagation_smatrix(kz: nd.ndarray, thickness: float) -> nd.ndarray:
-    """Build the 2x2 propagation S-matrix for a homogeneous layer.
+    A propagation matrix is ``[[0, p], [p, 0]]``, so the star product's
+    denominator ``1 - A22 * 0`` collapses to 1: the combination is four
+    multiplications with no division and no guard.  Specialising it keeps
+    the inner loop's arithmetic proportional to what the physics needs.
 
     Parameters
     ----------
-    kz : Out-of-plane wavevector in the layer.
-    thickness : Layer thickness in meters.
+    S_A : Components of the S-matrix accumulated so far.
+    p : Phase factor ``exp(1j * kz * thickness)`` of the layer.
 
     Returns
     -------
-    2x2 ndarray [[0, exp(i*phi)], [exp(i*phi), 0]].
+    Components of ``S_A (x) [[0, p], [p, 0]]``.
     """
-    phi = kz * thickness
-    p = nd.exp(1j * phi)
-    return nd.stack([nd.stack([0 * p, p]), nd.stack([p, 0 * p])])
+    A11, A12, A21, A22 = S_A
+    return A11, A12 * p, p * A21, A22 * p * p
 
 
 def _smatrix_solve(
@@ -83,8 +74,11 @@ def _smatrix_solve(
 ) -> tuple[nd.ndarray, nd.ndarray, dict]:
     """Compute R and T for a multilayer stack via S-matrix assembly.
 
-    Assembles interface and propagation S-matrices and combines them
-    left-to-right (superstrate → substrate) via the Redheffer star product.
+    Walks the stack left-to-right (superstrate to substrate), folding each
+    interface and each layer's propagation into a running S-matrix via the
+    Redheffer star product.  The running matrix is carried as four scalar
+    components, so a solve allocates nothing per layer beyond the
+    components themselves.
 
     Parameters
     ----------
@@ -101,7 +95,10 @@ def _smatrix_solve(
     -------
     R : Power reflectance (0-D ndarray).
     T : Power transmittance (0-D ndarray).
-    intermediates : Dict of S-matrix data needed for field reconstruction.
+    intermediates : Dict of per-medium quantities the solve computed
+        anyway.  Field profiles and per-layer absorption rebuild the
+        interface coefficients from these on demand, so no per-layer
+        matrix is retained by a solve that was not asked for one.
     """
     _omega, _k0, kzs, _, _, denom_vals = _medium_params(
         stack, wavelength, kx, polarization
@@ -111,24 +108,17 @@ def _smatrix_solve(
 
     kz0, denom0 = kzs[0], denom_vals[0]
 
-    interface_smatrices = [_interface_smatrix(Zs[0], Zs[1])]
-    propagation_smatrices: list[nd.ndarray] = []
-
-    S_total = interface_smatrices[0]
-
     _thicknesses = _resolve_thicknesses(stack, thicknesses)
 
-    for i in range(1, n_interfaces):
-        d = _thicknesses[i - 1]
-        P = _propagation_smatrix(kzs[i], d)
-        propagation_smatrices.append(P)
-        S_total = _redheffer_star(S_total, P)
-        S_int = _interface_smatrix(Zs[i], Zs[i + 1])
-        interface_smatrices.append(S_int)
-        S_total = _redheffer_star(S_total, S_int)
+    S_total = _interface_coeffs(Zs[0], Zs[1])
 
-    r_total = S_total[0, 0]
-    t_total = S_total[1, 0]
+    for i in range(1, n_interfaces):
+        phi = kzs[i] * _thicknesses[i - 1]
+        S_total = _propagation_star(S_total, nd.exp(1j * phi))
+        S_total = _redheffer_star(S_total, _interface_coeffs(Zs[i], Zs[i + 1]))
+
+    r_total = S_total[0]
+    t_total = S_total[2]
 
     R = _safe_R(r_total, kz0, denom0)
     T = _safe_T(t_total, kz0, denom0, kzs[-1], denom_vals[-1])
@@ -138,8 +128,6 @@ def _smatrix_solve(
         "denom_vals": denom_vals,
         "r_total": r_total,
         "t_total": t_total,
-        "interface_smatrices": interface_smatrices,
-        "propagation_smatrices": propagation_smatrices,
         "thicknesses": _thicknesses,
         "polarization": polarization,
     }
