@@ -161,6 +161,9 @@ def solve(
         if absorption:
             layer_abs = nd.stack([res_te.layer_absorption, res_tm.layer_absorption])
             energy_bal = nd.stack([res_te.energy_balance, res_tm.energy_balance])
+        # Keep both polarizations' intermediates so field profiles from a
+        # BOTH Result can carry the TE/TM axis like every other field.
+        intermediates = {"te": res_te.intermediates, "tm": res_tm.intermediates}
         return Result(
             R=nd.stack([res_te.R, res_tm.R]),
             T=nd.stack([res_te.T, res_tm.T]),
@@ -170,7 +173,7 @@ def solve(
             method_used=res_te.method_used,
             layer_absorption=layer_abs,
             energy_balance=energy_bal,
-            intermediates=res_te.intermediates,
+            intermediates=intermediates,
         )
 
     wl_axis = _sweep_axis(wavelength)

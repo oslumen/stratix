@@ -22,7 +22,7 @@
 
 **Result** — NamedTuple returned by `solve()`. Fields: `R`, `T`, `energy_balance`, `layer_absorption` (if `absorption=True`), `wavelengths`, `kx`, `polarization`, `method_used`.
 
-**Shape contract** — `R` and `T` are always `(Nλ, Nk)`. A scalar wavelength or kx counts as a length-1 axis, so a scalar solve returns `(1, 1)`; there are no special cases. `energy_balance` carries the same `(Nλ, Nk)` shape and `layer_absorption` prepends the layer axis as `(n_layers, Nλ, Nk)`. `Polarization.BOTH` prepends a TE/TM axis of size 2 to all four. `wavelengths` and `kx` stay 1-D, naming the sweep coordinates rather than following the grid. Field profiles from `compute_field_profile()` are `(Nλ, Nk, Nz)`; a `BOTH` Result carries only its TE intermediates, so field profiles are TE-only there and gain no polarization axis.
+**Shape contract** — `R` and `T` are always `(Nλ, Nk)`. A scalar wavelength or kx counts as a length-1 axis, so a scalar solve returns `(1, 1)`; there are no special cases. `energy_balance` carries the same `(Nλ, Nk)` shape and `layer_absorption` prepends the layer axis as `(n_layers, Nλ, Nk)`. `Polarization.BOTH` prepends a TE/TM axis of size 2 to all four. `wavelengths` and `kx` stay 1-D, naming the sweep coordinates rather than following the grid. Field profiles from `compute_field_profile()` are `(Nλ, Nk, Nz)`; a `BOTH` Result carries both polarizations' intermediates, so its profiles prepend the same TE/TM axis, giving `(2, Nλ, Nk, Nz)`.
 
 ## Avoid
 

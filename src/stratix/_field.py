@@ -11,40 +11,12 @@ from ._amplitudes import _medium_index
 from ._amplitudes import _medium_offsets
 
 
-def compute_field_profile(result, z_positions) -> dict:
-    """Compute E and H field profiles through the stack at given z positions.
-
-    Parameters
-    ----------
-    result : Result from :func:`stratix.solve`.
-    z_positions : 1-D array of z coordinates (meters).  z=0 at the
-        superstrate/first-layer interface; positive z goes into the stack.
-
-    Returns
-    -------
-    dict with keys ``E``, ``H``, ``z`` (all ndarrays).  ``E`` and ``H`` are
-    always shaped ``(Nλ, Nk, Nz)``, following the sweep shape contract of
-    :func:`stratix.solve`: a scalar wavelength or kx counts as a length-1
-    axis, so a scalar solve gives ``(1, 1, Nz)``.
-
-    A ``Polarization.BOTH`` Result keeps only its TE intermediates, so the
-    profile computed from one is TE-only and carries no polarization axis.
-    Solve for ``TE`` or ``TM`` explicitly when you need a field profile.
-
-    TE polarization (default):
-        ``E`` = Ey (tangential electric field).
-        ``H`` = (kz/denom) * (A·exp(i·kz·z) - B·exp(-i·kz·z)).
-
-    TM polarization:
-        ``E`` = Ex (tangential electric field).
-        ``H`` = Hy (tangential magnetic field).
-    """
-    intr = result.intermediates
-    if not intr:
+def _profile_from_intermediates(intr: dict, z: nd.ndarray) -> tuple:
+    """Reconstruct (E, H) on ``z`` from one polarization's intermediates."""
+    if not intr or "kzs" not in intr:
         raise ValueError(
             "No field intermediates in Result; smatrix solver was not used."
         )
-
     kzs: list = intr["kzs"]
     denom_vals: list = intr["denom_vals"]
     thicknesses = intr["thicknesses"]
@@ -53,7 +25,6 @@ def compute_field_profile(result, z_positions) -> dict:
     n_media = len(kzs)
     A, B, _, _ = _medium_amplitudes(intr)
 
-    z = nd.asarray(z_positions)
     boundaries = _medium_boundaries(thicknesses, n_media)
     offsets = _medium_offsets(boundaries)
     m_idx = _medium_index(z, boundaries)
@@ -91,4 +62,53 @@ def compute_field_profile(result, z_positions) -> dict:
         E_total = E_m if E_total is None else E_total + E_m
         H_total = H_m if H_total is None else H_total + H_m
 
-    return {"E": E_total, "H": H_total, "z": z}
+    return E_total, H_total
+
+
+def compute_field_profile(result, z_positions) -> dict:
+    """Compute E and H field profiles through the stack at given z positions.
+
+    Parameters
+    ----------
+    result : Result from :func:`stratix.solve`.
+    z_positions : 1-D array of z coordinates (meters).  z=0 at the
+        superstrate/first-layer interface; positive z goes into the stack.
+
+    Returns
+    -------
+    dict with keys ``E``, ``H``, ``z`` (all ndarrays).  ``E`` and ``H`` are
+    always shaped ``(Nλ, Nk, Nz)``, following the sweep shape contract of
+    :func:`stratix.solve`: a scalar wavelength or kx counts as a length-1
+    axis, so a scalar solve gives ``(1, 1, Nz)``.
+
+    A ``Polarization.BOTH`` Result carries both polarizations'
+    intermediates, so its profile prepends a TE/TM axis of size 2 —
+    ``(2, Nλ, Nk, Nz)`` — matching every other BOTH field.
+
+    TE polarization (default):
+        ``E`` = Ey (tangential electric field).
+        ``H`` = (kz/denom) * (A·exp(i·kz·z) - B·exp(-i·kz·z)).
+
+    TM polarization:
+        ``E`` = Ex (tangential electric field).
+        ``H`` = Hy (tangential magnetic field).
+    """
+    intr = result.intermediates
+    if not intr:
+        raise ValueError(
+            "No field intermediates in Result; smatrix solver was not used."
+        )
+
+    z = nd.asarray(z_positions)
+
+    if result.polarization == Polarization.BOTH:
+        E_te, H_te = _profile_from_intermediates(intr["te"], z)
+        E_tm, H_tm = _profile_from_intermediates(intr["tm"], z)
+        return {
+            "E": nd.stack([E_te, E_tm]),
+            "H": nd.stack([H_te, H_tm]),
+            "z": z,
+        }
+
+    E, H = _profile_from_intermediates(intr, z)
+    return {"E": E, "H": H, "z": z}

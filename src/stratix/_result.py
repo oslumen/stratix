@@ -23,7 +23,9 @@ class Result(NamedTuple):
     method_used : Solver method that was applied.
     layer_absorption : Per-layer absorbed power fraction (absorption=True only).
     energy_balance : R + T + sum(layer_absorption); ≈1 when absorption=True.
-    intermediates : S-matrix solver intermediates for field profile.
+    intermediates : S-matrix solver intermediates for field profile.  For
+        ``Polarization.BOTH`` this is a dict with ``"te"`` and ``"tm"``
+        keys holding each polarization's intermediates.
 
     Shapes
     ------

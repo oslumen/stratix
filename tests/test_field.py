@@ -284,6 +284,93 @@ class TestFieldTM:
         assert abs(field["H"][0, 0][0] - field["H"][0, 0][1]) < 1e-4
 
 
+class TestFieldBoth:
+    """Field profiles from a BOTH Result carry a TE/TM axis — Issue #56."""
+
+    def _off_normal_solve(self, polarization):
+        stack = _sweep_stack()
+        wavelengths = nd.array([4e-7, 5e-7])
+        wavelength_ref = 5e-7
+        k0 = 2 * nd.pi / wavelength_ref
+        kx = float(k0 * nd.sin(nd.array(30.0 * nd.pi / 180)))
+        return stratix.solve(stack, wavelengths, kx=kx, polarization=polarization)
+
+    def test_both_profile_shape_prepends_polarization_axis(self, set_backend):
+        result = self._off_normal_solve(Polarization.BOTH)
+        z = nd.array([-100e-9, 0.0, 50e-9, 300e-9])
+        field = stratix.compute_field_profile(result, z)
+
+        assert field["E"].shape == (2, 2, 1, 4)
+        assert field["H"].shape == (2, 2, 1, 4)
+        assert field["z"].shape == (4,)
+
+    def test_te_slice_matches_standalone_te(self, set_backend):
+        z = nd.array([-100e-9, 0.0, 50e-9, 120e-9, 300e-9])
+        both = stratix.compute_field_profile(
+            self._off_normal_solve(Polarization.BOTH), z
+        )
+        te = stratix.compute_field_profile(
+            self._off_normal_solve(Polarization.TE), z
+        )
+        for i in range(2):
+            for j in range(len(z)):
+                assert abs(both["E"][0, i, 0, j] - te["E"][i, 0, j]) < 1e-14
+                assert abs(both["H"][0, i, 0, j] - te["H"][i, 0, j]) < 1e-14
+
+    def test_tm_slice_matches_standalone_tm(self, set_backend):
+        z = nd.array([-100e-9, 0.0, 50e-9, 120e-9, 300e-9])
+        both = stratix.compute_field_profile(
+            self._off_normal_solve(Polarization.BOTH), z
+        )
+        tm = stratix.compute_field_profile(
+            self._off_normal_solve(Polarization.TM), z
+        )
+        for i in range(2):
+            for j in range(len(z)):
+                assert abs(both["E"][1, i, 0, j] - tm["E"][i, 0, j]) < 1e-14
+                assert abs(both["H"][1, i, 0, j] - tm["H"][i, 0, j]) < 1e-14
+
+    def test_both_profile_is_never_te_only(self, set_backend):
+        """Off normal the TE and TM halves must differ — no silent TE reuse."""
+        result = self._off_normal_solve(Polarization.BOTH)
+        z = nd.array([-100e-9, 0.0, 50e-9, 300e-9])
+        field = stratix.compute_field_profile(result, z)
+
+        assert field["E"].ndim == 4
+        diff = float(nd.max(nd.abs(field["E"][0] - field["E"][1])))
+        assert diff > 1e-6
+
+
+class TestFieldNonSmatrix:
+    """Non-S-matrix results keep no amplitudes: clear ValueError, not KeyError."""
+
+    def test_abeles_raises_value_error(self, set_backend):
+        stack = _sweep_stack()
+        result = stratix.solve(
+            stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+            method=stratix.Method.ABELES,
+        )
+        z = nd.array([0.0, 50e-9])
+        try:
+            stratix.compute_field_profile(result, z)
+            raise AssertionError("expected ValueError")
+        except ValueError as exc:
+            assert "smatrix" in str(exc)
+
+    def test_abeles_both_raises_value_error(self, set_backend):
+        stack = _sweep_stack()
+        result = stratix.solve(
+            stack, 5e-7, kx=0.0, polarization=Polarization.BOTH,
+            method=stratix.Method.ABELES,
+        )
+        z = nd.array([0.0, 50e-9])
+        try:
+            stratix.compute_field_profile(result, z)
+            raise AssertionError("expected ValueError")
+        except ValueError as exc:
+            assert "smatrix" in str(exc)
+
+
 def _sweep_stack():
     n_air, n_a, n_b, n_sub = 1.0, 1.38, 2.0, 1.5
     wavelength = 5e-7
