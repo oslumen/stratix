@@ -116,13 +116,6 @@ def _smatrix_solve(
 
     S_total = interface_smatrices[0]
 
-    r_before = S_total[0, 0]
-    t_before = S_total[1, 0]
-    R_before = _safe_R(r_before, kz0, denom0)
-    T_before = _safe_T(t_before, kz0, denom0, kzs[1], denom_vals[1])
-
-    layer_abs_list: list = []
-
     _thicknesses = _resolve_thicknesses(stack, thicknesses)
 
     for i in range(1, n_interfaces):
@@ -134,27 +127,11 @@ def _smatrix_solve(
         interface_smatrices.append(S_int)
         S_total = _redheffer_star(S_total, S_int)
 
-        r_after = S_total[0, 0]
-        t_after = S_total[1, 0]
-        R_after = _safe_R(r_after, kz0, denom0)
-        T_after = _safe_T(t_after, kz0, denom0, kzs[i + 1], denom_vals[i + 1])
-
-        A_layer = (R_before + T_before) - (R_after + T_after)
-        layer_abs_list.append(A_layer)
-
-        R_before = R_after
-        T_before = T_after
-
     r_total = S_total[0, 0]
     t_total = S_total[1, 0]
 
     R = _safe_R(r_total, kz0, denom0)
     T = _safe_T(t_total, kz0, denom0, kzs[-1], denom_vals[-1])
-
-    energy_bal = R + T
-    if layer_abs_list:
-        for a in layer_abs_list:
-            energy_bal = energy_bal + a
 
     intermediates = {
         "kzs": kzs,
@@ -165,8 +142,6 @@ def _smatrix_solve(
         "propagation_smatrices": propagation_smatrices,
         "thicknesses": _thicknesses,
         "polarization": polarization,
-        "layer_absorption": layer_abs_list,
-        "energy_balance": energy_bal,
     }
 
     return R, T, intermediates

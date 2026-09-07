@@ -8,6 +8,7 @@ import numdiff as nd
 from phokaia import Polarization
 from phokaia import Stack
 
+from ._absorption import _layer_absorption
 from ._result import Result
 from ._types import Method
 from .methods._abeles import _abeles_solve
@@ -60,6 +61,46 @@ def _scalar_solve(
         raise NotImplementedError(f"Method {resolved.value!r} not yet implemented")
 
 
+def _absorption_terms(
+    R: nd.ndarray,
+    T: nd.ndarray,
+    intermediates: dict,
+    resolved: Method,
+) -> list:
+    """Per-layer absorbed power fractions for the requested method.
+
+    The S-matrix path reconstructs the medium amplitudes and integrates the
+    Poynting flux across each layer.  The other methods keep no amplitude
+    information, so they report a single lumped term ``1 - R - T``.
+    """
+    if resolved == Method.SMATRIX:
+        return _layer_absorption(intermediates)
+    return [1.0 - R - T]
+
+
+def _absorption_fields(
+    R: nd.ndarray,
+    T: nd.ndarray,
+    intermediates: dict,
+    resolved: Method,
+) -> tuple[nd.ndarray, nd.ndarray]:
+    """Assemble the ``layer_absorption`` and ``energy_balance`` arrays.
+
+    ``layer_absorption`` gets the layer index as its leading axis and the
+    sweep shape of ``R`` behind it; ``energy_balance`` carries the sweep
+    shape alone.
+    """
+    terms = _absorption_terms(R, T, intermediates, resolved)
+
+    layer_abs = nd.stack(terms) if terms else nd.zeros((0, *nd.shape(R)))
+
+    energy_bal = R + T
+    for term in terms:
+        energy_bal = energy_bal + term
+
+    return layer_abs, energy_bal
+
+
 def solve(
     stack: Stack,
     wavelength: float,
@@ -78,7 +119,11 @@ def solve(
     kx : In-plane wavevector component in rad/m.  Scalar or 1-D array (Nk,).
     polarization : ``TE``, ``TM``, or ``BOTH``.
     method : Solver method.  ``AUTO`` resolves to ``SMATRIX``.
-    absorption : If ``True``, compute per-layer absorption (not yet implemented).
+    absorption : If ``True``, also return per-layer absorption and the
+        energy balance ``R + T + Σ(layer absorption)``.  With the S-matrix
+        method each layer's share comes from the drop in z-directed
+        Poynting flux across it; the other methods report a single lumped
+        ``1 - R - T`` term.
     thicknesses : Optional 1-D array overriding the stack's layer thicknesses.
         When given, ``len(thicknesses)`` must equal ``len(stack.layers)``.
         Enables autodiff w.r.t. thickness via ``nd.grad``.
@@ -97,7 +142,9 @@ def solve(
         layer_abs = None
         energy_bal = None
         if absorption:
-            layer_abs = res_te.layer_absorption
+            layer_abs = nd.stack(
+                [res_te.layer_absorption, res_tm.layer_absorption]
+            )
             energy_bal = nd.stack([res_te.energy_balance, res_tm.energy_balance])
         result = Result(
             R=nd.stack([res_te.R, res_tm.R]),
@@ -122,15 +169,9 @@ def solve(
         layer_abs = None
         energy_bal = None
         if absorption:
-            la = intermediates.get("layer_absorption")
-            eb_val = intermediates.get("energy_balance")
-            if la is not None and eb_val is not None:
-                layer_abs = nd.array(la)
-                energy_bal = nd.array(eb_val)
-            else:
-                total_abs = 1.0 - R - T
-                layer_abs = nd.array([total_abs])
-                energy_bal = nd.array(1.0)
+            layer_abs, energy_bal = _absorption_fields(
+                R, T, intermediates, resolved
+            )
         result = Result(
             R=nd.array([R]),
             T=nd.array([T]),
@@ -161,6 +202,11 @@ def solve(
     wl_out = wl_arr if wl_is_arr else nd.array([wl_arr])
     kx_out = kx_arr if kx_is_arr else nd.array([kx_arr])
 
+    layer_abs = None
+    energy_bal = None
+    if absorption:
+        layer_abs, energy_bal = _absorption_fields(R, T, intermediates, resolved)
+
     result = Result(
         R=R,
         T=T,
@@ -168,6 +214,8 @@ def solve(
         kx=kx_out,
         polarization=polarization,
         method_used=resolved,
+        layer_absorption=layer_abs,
+        energy_balance=energy_bal,
         intermediates=intermediates,
     )
     return result

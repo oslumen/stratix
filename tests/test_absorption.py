@@ -196,6 +196,140 @@ class TestAbsorptionTM:
         assert abs(balance - 1.0) < 1e-12
 
 
+def _absorber_then_bragg(n_pairs: int = 6):
+    """Lossy top layer in front of a lossless quarter-wave Bragg mirror."""
+    wavelength = 5e-7
+    n_lossy = 1.5 + 0.3j
+    n_low, n_high = 1.38, 2.3
+    layers = [
+        Layer(thickness=40e-9, material=Material(epsilon=n_lossy**2)),
+    ]
+    for _ in range(n_pairs):
+        layers.append(
+            Layer(
+                thickness=wavelength / (4 * n_high),
+                material=Material(epsilon=n_high**2),
+            )
+        )
+        layers.append(
+            Layer(
+                thickness=wavelength / (4 * n_low),
+                material=Material(epsilon=n_low**2),
+            )
+        )
+    stack = Stack(
+        superstrate=Material(epsilon=1.0),
+        substrate=Material(epsilon=1.5**2),
+        layers=layers,
+    )
+    return stack, wavelength
+
+
+class TestAbsorptionAttribution:
+    """Per-layer absorption comes from Poynting flux — Issue #48."""
+
+    def test_absorber_before_lossless_mirror(self, set_backend):
+        """All absorption sits in the lossy layer, none in the Bragg mirror."""
+        stack, wavelength = _absorber_then_bragg()
+        result = stratix.solve(
+            stack, wavelength, kx=0.0, polarization=Polarization.TE,
+            absorption=True,
+        )
+        A = [float(a) for a in result.layer_absorption]
+        total = 1.0 - float(result.R[0]) - float(result.T[0])
+
+        assert len(A) == len(stack.layers)
+        assert abs(A[0] - total) < 1e-10, (
+            f"absorber should carry all absorption: {A[0]} vs {total}"
+        )
+        for i, a in enumerate(A[1:], start=1):
+            assert abs(a) < 1e-12, f"lossless layer {i} absorbs {a}"
+
+    def test_absorber_before_lossless_mirror_tm(self, set_backend):
+        stack, wavelength = _absorber_then_bragg()
+        k0 = 2 * nd.pi / wavelength
+        kx = float(k0 * nd.sin(nd.array(35.0 * nd.pi / 180)))
+        result = stratix.solve(
+            stack, wavelength, kx=kx, polarization=Polarization.TM,
+            absorption=True,
+        )
+        A = [float(a) for a in result.layer_absorption]
+        total = 1.0 - float(result.R[0]) - float(result.T[0])
+
+        assert abs(A[0] - total) < 1e-10
+        for a in A[1:]:
+            assert abs(a) < 1e-12
+
+    def test_sum_equals_one_minus_r_minus_t(self, set_backend):
+        """Two separated absorbers: per-layer sum recovers total absorption."""
+        n_lossy_a = 1.5 + 0.2j
+        n_lossy_b = 0.5 + 2.0j
+        stack = Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+            layers=[
+                Layer(thickness=60e-9, material=Material(epsilon=n_lossy_a**2)),
+                Layer(thickness=90e-9, material=Material(epsilon=1.38**2)),
+                Layer(thickness=20e-9, material=Material(epsilon=n_lossy_b**2)),
+            ],
+        )
+        result = stratix.solve(
+            stack, 5e-7, kx=0.0, polarization=Polarization.TE, absorption=True,
+        )
+        A = [float(a) for a in result.layer_absorption]
+        total = 1.0 - float(result.R[0]) - float(result.T[0])
+
+        assert abs(sum(A) - total) < 1e-12
+        assert A[0] > 0
+        assert abs(A[1]) < 1e-12
+        assert A[2] > 0
+
+    def test_energy_balance_independent_of_r_t_path(self, set_backend):
+        """Balance is a genuine check: fluxes and R/T come from separate paths.
+
+        The absorption terms are reconstructed from the medium amplitudes,
+        while R and T come out of the Redheffer product.  Agreement to
+        round-off therefore tests the two paths against each other rather
+        than being true by construction.
+        """
+        stack, wavelength = _absorber_then_bragg(n_pairs=8)
+        for pol in (Polarization.TE, Polarization.TM):
+            result = stratix.solve(
+                stack, wavelength, kx=3e6, polarization=pol, absorption=True,
+            )
+            assert abs(float(result.energy_balance) - 1.0) < 1e-10
+
+    def test_energy_balance_lossless_bragg(self, set_backend):
+        n_low, n_high = 1.38, 2.3
+        wavelength = 5e-7
+        layers = []
+        for _ in range(6):
+            layers.append(
+                Layer(
+                    thickness=wavelength / (4 * n_high),
+                    material=Material(epsilon=n_high**2),
+                )
+            )
+            layers.append(
+                Layer(
+                    thickness=wavelength / (4 * n_low),
+                    material=Material(epsilon=n_low**2),
+                )
+            )
+        stack = Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+            layers=layers,
+        )
+        result = stratix.solve(
+            stack, wavelength, kx=0.0, polarization=Polarization.TE,
+            absorption=True,
+        )
+        assert abs(float(result.energy_balance) - 1.0) < 1e-10
+        for a in result.layer_absorption:
+            assert abs(float(a)) < 1e-12
+
+
 class TestAbsorptionWithMethods:
     """Absorption via non-default solver methods (total only, no per-layer)."""
 
