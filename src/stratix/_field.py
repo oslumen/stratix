@@ -51,7 +51,7 @@ def compute_field_profile(result, z_positions) -> dict:
 
     z = nd.asarray(z_positions)
     boundaries = _medium_boundaries(thicknesses, n_media)
-    offsets = _medium_offsets(thicknesses, n_media)
+    offsets = _medium_offsets(boundaries)
     m_idx = _medium_index(z, boundaries)
 
     E_total = None

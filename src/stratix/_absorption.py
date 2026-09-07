@@ -69,9 +69,7 @@ def _layer_absorption(intermediates: dict) -> list:
         admittance = kzs[m] / denom_vals[m]
         entering = _flux(admittance, A_left[m], B_left[m])
         leaving = _flux(admittance, A_right[m], B_right[m])
-        A_layer = (entering - leaving) / safe_incident
-        absorption.append(
-            nd.where(evanescent, nd.zeros_like(A_layer), A_layer)
-        )
+        absorbed = (entering - leaving) / safe_incident
+        absorption.append(nd.where(evanescent, nd.zeros_like(absorbed), absorbed))
 
     return absorption

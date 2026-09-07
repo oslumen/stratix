@@ -284,13 +284,14 @@ class TestAbsorptionAttribution:
         assert abs(A[1]) < 1e-12
         assert A[2] > 0
 
-    def test_energy_balance_independent_of_r_t_path(self, set_backend):
-        """Balance is a genuine check: fluxes and R/T come from separate paths.
+    def test_energy_balance_reported(self, set_backend):
+        """R + T + Σ(layer absorption) is 1 for a deep lossy stack.
 
-        The absorption terms are reconstructed from the medium amplitudes,
-        while R and T come out of the Redheffer product.  Agreement to
-        round-off therefore tests the two paths against each other rather
-        than being true by construction.
+        Flux is continuous across every interface, so the per-layer terms
+        telescope and this identity holds analytically; it guards the
+        arithmetic, not the physics.  The physical content of the per-layer
+        split is tested by :meth:`test_matches_ohmic_dissipation` below and
+        against the ``tmm`` reference in ``test_tmm_integration.py``.
         """
         stack, wavelength = _absorber_then_bragg(n_pairs=8)
         for pol in (Polarization.TE, Polarization.TM):
@@ -298,6 +299,62 @@ class TestAbsorptionAttribution:
                 stack, wavelength, kx=3e6, polarization=pol, absorption=True,
             )
             assert abs(float(result.energy_balance) - 1.0) < 1e-10
+
+    def test_matches_ohmic_dissipation(self, set_backend):
+        """Flux drop across a layer equals the ohmic loss integrated in it.
+
+        For TE the power dissipated in a layer is
+        ``½ ω ε0 Im(ε) ∫|E|² dz``; dividing by the incident flux
+        ``Re(kz0/μ0_r) / (2 ω μ0)`` turns the constants into ``k0²``:
+
+            A = k0² Im(ε) ∫|E|² dz / Re(kz0 / denom0)
+
+        Integrating the field profile is an independent route to the same
+        number as the Poynting-flux difference, so agreement tests the
+        flux formula itself rather than a telescoping identity.
+        """
+        wavelength = 5e-7
+        n_a = 1.5 + 0.25j
+        n_b = 0.8 + 1.2j
+        d_a, d_b = 70e-9, 45e-9
+        stack = Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+            layers=[
+                Layer(thickness=d_a, material=Material(epsilon=n_a**2)),
+                Layer(thickness=90e-9, material=Material(epsilon=1.38**2)),
+                Layer(thickness=d_b, material=Material(epsilon=n_b**2)),
+            ],
+        )
+        result = stratix.solve(
+            stack, wavelength, kx=0.0, polarization=Polarization.TE,
+            absorption=True,
+        )
+
+        k0 = float(2 * nd.pi / wavelength)
+        intr = result.intermediates
+        incident = float(nd.real(intr["kzs"][0] / intr["denom_vals"][0]))
+
+        n_samples = 20001
+        starts = [0.0, d_a, d_a + 90e-9]
+        widths = [d_a, 90e-9, d_b]
+        for layer, (start, width) in enumerate(zip(starts, widths, strict=True)):
+            z = nd.array(
+                [start + width * i / (n_samples - 1) for i in range(n_samples)]
+            )
+            field = stratix.compute_field_profile(result, z)
+            e2 = [float(abs(value)) ** 2 for value in field["E"]]
+            step = width / (n_samples - 1)
+            integral = step * (sum(e2) - 0.5 * (e2[0] + e2[-1]))
+
+            eps_layer = complex(stack.layers[layer].material.epsilon())
+            expected = k0**2 * eps_layer.imag * integral / incident
+
+            assert abs(float(result.layer_absorption[layer]) - expected) < 1e-8, (
+                f"layer {layer}: flux drop "
+                f"{float(result.layer_absorption[layer])} vs "
+                f"dissipation integral {expected}"
+            )
 
     def test_energy_balance_lossless_bragg(self, set_backend):
         n_low, n_high = 1.38, 2.3
@@ -496,6 +553,17 @@ class TestAbsorptionWithMethods:
         assert result.energy_balance is not None
         assert abs(float(result.energy_balance) - 1.0) < 1e-12
 
+        # The lumped term is 1 - R - T by construction, so the balance alone
+        # proves nothing; check it against the S-matrix per-layer total.
+        reference = stratix.solve(
+            stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+            method=Method.SMATRIX, absorption=True,
+        )
+        expected = sum(float(a) for a in reference.layer_absorption)
+        assert len(result.layer_absorption) == 1
+        assert abs(float(result.layer_absorption[0]) - expected) < 1e-12
+        assert expected > 0
+
     def test_dtn_absorption(self, set_backend):
         n_lossy = 0.5 + 1j
         eps_lossy = n_lossy**2
@@ -512,3 +580,12 @@ class TestAbsorptionWithMethods:
         )
         assert result.energy_balance is not None
         assert abs(float(result.energy_balance) - 1.0) < 1e-12
+
+        reference = stratix.solve(
+            stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+            method=Method.SMATRIX, absorption=True,
+        )
+        expected = sum(float(a) for a in reference.layer_absorption)
+        assert len(result.layer_absorption) == 1
+        assert abs(float(result.layer_absorption[0]) - expected) < 1e-12
+        assert expected > 0

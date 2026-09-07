@@ -10,8 +10,8 @@ balance R + T + ΣA = 1.
 # %%
 # A 40 nm gold film on glass. Gold has a complex permittivity at visible
 # frequencies — the imaginary part models ohmic loss.
-# Absorption requires ``absorption=True`` and calling ``solve`` at each
-# wavelength individually.
+# Pass ``absorption=True`` to get per-layer absorption alongside R and T;
+# it works over a whole wavelength sweep in a single vectorized call.
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -34,14 +34,16 @@ stack = Stack(
 )
 
 wavelengths = np.linspace(400e-9, 800e-9, 200)
-R, T, A, balance = [], [], [], []
 
-for wl in wavelengths:
-    res = solve(stack, wl, kx=0.0, polarization=Polarization.TE, absorption=True)
-    R.append(float(res.R[0]))
-    T.append(float(res.T[0]))
-    A.append(float(res.layer_absorption[0]))
-    balance.append(float(res.energy_balance))
+res = solve(
+    stack, wavelengths, kx=0.0, polarization=Polarization.TE, absorption=True
+)
+
+# ``R`` and ``T`` follow the sweep shape (200,); ``layer_absorption`` puts the
+# layer index first, giving (n_layers, 200).
+R, T = res.R, res.T
+A = res.layer_absorption[0]
+balance = res.energy_balance
 
 wl_nm = wavelengths * 1e9
 

@@ -81,12 +81,11 @@ def _medium_amplitudes(intermediates: dict) -> tuple[list, list, list, list]:
     return A_left, B_left, A_right, B_right
 
 
-def _medium_offsets(thicknesses, n_media: int):
-    """Return the z coordinate of each medium's entrance face.
+def _medium_boundaries(thicknesses: nd.ndarray, n_media: int) -> nd.ndarray:
+    """Return the z coordinates of the interface planes, ascending.
 
-    ``z = 0`` sits at the superstrate/first-layer interface.  The
-    superstrate is unbounded below, so its offset is 0 as well, which
-    makes ``z - offset`` the correct local coordinate for every medium.
+    There are ``n_media - 1`` interfaces: the first at ``z = 0`` and the
+    last at the total stack thickness.
 
     Parameters
     ----------
@@ -95,27 +94,34 @@ def _medium_offsets(thicknesses, n_media: int):
 
     Returns
     -------
-    1-D ndarray of length ``n_media``.
-    """
-    if n_media <= 2:
-        return nd.zeros(2)
-    bounds = nd.cumsum(nd.asarray(thicknesses))
-    return nd.concatenate([nd.zeros(2), bounds])
-
-
-def _medium_boundaries(thicknesses, n_media: int):
-    """Return the z coordinates of the interface planes, ascending.
-
-    There are ``n_media - 1`` interfaces: the first at ``z = 0`` and the
-    last at the total stack thickness.
+    1-D ndarray of length ``n_media - 1``.
     """
     if n_media <= 2:
         return nd.zeros(1)
-    bounds = nd.cumsum(nd.asarray(thicknesses))
-    return nd.concatenate([nd.zeros(1), bounds])
+    return nd.concatenate([nd.zeros(1), nd.cumsum(nd.asarray(thicknesses))])
 
 
-def _medium_index(z, boundaries):
+def _medium_offsets(boundaries: nd.ndarray) -> nd.ndarray:
+    """Return the z coordinate of each medium's entrance face.
+
+    Every medium starts at the interface before it, so the offsets are the
+    boundaries shifted by one.  The superstrate is unbounded below and has
+    no interface before it; giving it offset 0 makes ``z - offset`` the
+    correct local coordinate there too, since the superstrate's own fields
+    are already referenced to ``z = 0``.
+
+    Parameters
+    ----------
+    boundaries : 1-D ndarray from :func:`_medium_boundaries`.
+
+    Returns
+    -------
+    1-D ndarray of length ``n_media``.
+    """
+    return nd.concatenate([nd.zeros(1), boundaries])
+
+
+def _medium_index(z: nd.ndarray, boundaries: nd.ndarray) -> nd.ndarray:
     """Locate which medium each z coordinate falls in, vectorised.
 
     Counting how many interface planes lie at or below ``z`` gives the

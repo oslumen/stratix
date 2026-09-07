@@ -61,23 +61,6 @@ def _scalar_solve(
         raise NotImplementedError(f"Method {resolved.value!r} not yet implemented")
 
 
-def _absorption_terms(
-    R: nd.ndarray,
-    T: nd.ndarray,
-    intermediates: dict,
-    resolved: Method,
-) -> list:
-    """Per-layer absorbed power fractions for the requested method.
-
-    The S-matrix path reconstructs the medium amplitudes and integrates the
-    Poynting flux across each layer.  The other methods keep no amplitude
-    information, so they report a single lumped term ``1 - R - T``.
-    """
-    if resolved == Method.SMATRIX:
-        return _layer_absorption(intermediates)
-    return [1.0 - R - T]
-
-
 def _absorption_fields(
     R: nd.ndarray,
     T: nd.ndarray,
@@ -86,11 +69,18 @@ def _absorption_fields(
 ) -> tuple[nd.ndarray, nd.ndarray]:
     """Assemble the ``layer_absorption`` and ``energy_balance`` arrays.
 
+    The S-matrix path reconstructs the medium amplitudes and takes the drop
+    in Poynting flux across each layer.  The other methods keep no
+    amplitude information, so they report a single lumped ``1 - R - T``.
+
     ``layer_absorption`` gets the layer index as its leading axis and the
     sweep shape of ``R`` behind it; ``energy_balance`` carries the sweep
     shape alone.
     """
-    terms = _absorption_terms(R, T, intermediates, resolved)
+    if resolved == Method.SMATRIX:
+        terms = _layer_absorption(intermediates)
+    else:
+        terms = [1.0 - R - T]
 
     layer_abs = nd.stack(terms) if terms else nd.zeros((0, *nd.shape(R)))
 
@@ -142,9 +132,7 @@ def solve(
         layer_abs = None
         energy_bal = None
         if absorption:
-            layer_abs = nd.stack(
-                [res_te.layer_absorption, res_tm.layer_absorption]
-            )
+            layer_abs = nd.stack([res_te.layer_absorption, res_tm.layer_absorption])
             energy_bal = nd.stack([res_te.energy_balance, res_tm.energy_balance])
         result = Result(
             R=nd.stack([res_te.R, res_tm.R]),
@@ -169,9 +157,7 @@ def solve(
         layer_abs = None
         energy_bal = None
         if absorption:
-            layer_abs, energy_bal = _absorption_fields(
-                R, T, intermediates, resolved
-            )
+            layer_abs, energy_bal = _absorption_fields(R, T, intermediates, resolved)
         result = Result(
             R=nd.array([R]),
             T=nd.array([T]),
