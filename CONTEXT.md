@@ -16,7 +16,11 @@
 
 **Polarization** (from phokaia) — `TE` (s-polarized, E-field out of incidence plane), `TM` (p-polarized, H-field out of incidence plane), or `BOTH` (compute both in one call). Defined in phokaia as `phokaia.Polarization`.
 
-**Energy balance** — `R + T + Σ(layer_absorption) ≈ 1`. Reflectance + transmittance + per-layer absorption must sum to unity for lossless stacks.
+**Reflectance (R), Transmittance (T)** — Ratios of time-averaged z-directed power flux, both normalised by the incident flux `Re(kz0/denom0)` in the superstrate. `R = |r|²` is evaluated at the first interface. `T` is the fraction of incident power delivered *across the last interface* into the substrate — not the power reaching infinity, which is zero whenever the substrate absorbs. Both assume a propagating incident wave; see _Lossless-superstrate precondition_.
+
+**Energy balance** — `R + T + Σ(layer_absorption) ≈ 1`. Reflectance + transmittance + per-layer absorption must sum to unity. Holds for a lossy *substrate* and for lossy *layers* (whose absorption the sum counts), but not for a lossy superstrate.
+
+**Lossless-superstrate precondition** — R and T partition energy only when the incident medium is lossless. The superstrate carries both the incident and the reflected wave; in a lossless medium their cross term contributes no real z-directed flux, but in a lossy one it does, and neither `|r|²` nor `T` accounts for it. `R + T + ΣA` then measures 1.00082 at `Im(ε_super) = 0.01` and 1.124 at `Im(ε_super) = 1`, at normal incidence. `R` also becomes reference-plane dependent, since a detector at distance `d` sees `|r|²` attenuated by `exp(-2·Im(kz0)·d)`. Past the superstrate light line it degrades further: `T` diverges as `1/Im(ε_super)` while `|r|²` stays finite. A lossy *substrate* is unaffected — it is semi-infinite with a single outgoing wave, so its flux is unambiguous and energy balance closes exactly. Tracked in issue #57.
 
 **kx** — In-plane wavevector component. Determines incidence angle: `kx = n_inc * k0 * sin(θ)`.
 
