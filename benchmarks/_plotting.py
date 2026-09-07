@@ -123,7 +123,7 @@ def heatmap(
     """
     arr = nd.array(data)
     fig, ax = plt.subplots(figsize=(len(col_labels) * 1.5, len(row_labels) * 1.2))
-    im = ax.imshow(arr, aspect="auto", cmap="viridis")
+    im = ax.imshow(arr, aspect="auto", cmap="Spectral", alpha=0.5)
 
     ax.set_xticks(range(len(col_labels)))
     ax.set_xticklabels(col_labels, rotation=45, ha="right")

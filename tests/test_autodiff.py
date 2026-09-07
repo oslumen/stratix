@@ -213,6 +213,52 @@ class TestMultiLayerGrad:
             )
 
 
+class TestGradThicknessAllMethods:
+    """Gradient w.r.t. thicknesses override through public solve() per method."""
+
+    def test_dR_dthickness_matches_fd_all_methods(self, set_backend):
+        """dR/dt via solve(thicknesses=...) matches FD for every method."""
+        if nd.get_backend() == "numpy":
+            pytest.skip("numpy backend does not support grad")
+        import stratix
+        from stratix import Method
+
+        n_air, n_film, n_sub = 1.0, 1.38, 1.5
+        wavelength = 5e-7
+        d0 = 100e-9
+
+        stack = Stack(
+            superstrate=Material(epsilon=n_air**2),
+            substrate=Material(epsilon=n_sub**2),
+            layers=[Layer(thickness=d0, material=Material(epsilon=n_film**2))],
+        )
+
+        for method in [
+            Method.SMATRIX,
+            Method.ABELES,
+            Method.ADMITTANCE,
+            Method.DTN,
+        ]:
+            def f(t, method=method):
+                result = stratix.solve(
+                    stack,
+                    wavelength,
+                    kx=0.0,
+                    polarization=Polarization.TE,
+                    method=method,
+                    thicknesses=nd.array([t]),
+                )
+                return result.R[0]
+
+            grad_ad = nd.grad(f)(d0)
+            grad_fd = _central_fd(f, d0, h=1e-12)
+
+            rel_err = abs(float(grad_ad - grad_fd)) / max(abs(float(grad_fd)), 1e-12)
+            assert rel_err < 1e-4, (
+                f"{method.value}: dR/dt AD={grad_ad}, FD={grad_fd}, rel_err={rel_err}"
+            )
+
+
 class TestJit:
     """JIT compilation equivalency."""
 
@@ -242,3 +288,41 @@ class TestJit:
         assert abs(result_normal - result_jit) < 1e-12, (
             f"JIT mismatch: {result_normal} vs {result_jit}"
         )
+
+    def test_jit_solve_static_argnames_equivalency(self, set_backend):
+        """nd.jit(solve, static_argnames=...) matches eager solve on sweeps."""
+        if nd.get_backend() == "numpy":
+            pytest.skip("numpy backend does not support jit")
+        import stratix
+        from stratix import Method
+
+        stack = Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+            layers=[Layer(thickness=100e-9, material=Material(epsilon=1.38**2))],
+        )
+        wavelengths = nd.linspace(400e-9, 800e-9, 5)
+        kx = nd.linspace(0.0, 1e7, 3)
+
+        jit_solve = nd.jit(
+            stratix.solve,
+            static_argnames=(
+                "stack",
+                "polarization",
+                "method",
+                "absorption",
+                "thicknesses",
+            ),
+        )
+
+        eager = stratix.solve(
+            stack, wavelengths, kx=kx,
+            polarization=Polarization.TE, method=Method.SMATRIX,
+        )
+        compiled = jit_solve(
+            stack, wavelengths, kx=kx,
+            polarization=Polarization.TE, method=Method.SMATRIX,
+        )
+
+        assert float(nd.max(nd.abs(eager.R - compiled.R))) < 1e-12
+        assert float(nd.max(nd.abs(eager.T - compiled.T))) < 1e-12

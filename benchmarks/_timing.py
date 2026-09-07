@@ -23,6 +23,7 @@ def time_solve(
     method: Method = Method.AUTO,
     n_repeats: int = 10,
     solver: Callable[..., Any] | None = None,
+    jit: bool = True,
 ) -> dict[str, Any]:
     """Measure execution time of a solve function.
 
@@ -43,6 +44,11 @@ def time_solve(
     solver : callable, optional
         Solve function to benchmark. Default ``stratix.solve``.
         Pass ``nd.jit(solve)`` to measure JIT-compiled performance.
+    jit : bool
+        When ``True`` (default) and no custom *solver*, automatically
+        JIT-compile the solve via :func:`numdiff.jit`.  Set ``False``
+        to benchmark eager (non-compiled) execution.  Ignored when
+        a custom *solver* is provided.
 
     Returns
     -------
@@ -50,16 +56,37 @@ def time_solve(
         Keys: ``mean``, ``std``, ``min``, ``max``, ``times`` (list of
         per-repeat times in seconds).
     """
-    _solver = solve if solver is None else solver
-    params: dict[str, Any] = {
-        "stack": stack,
-        "wavelength": wavelength,
-        "kx": kx,
-        "polarization": polarization,
-        "method": method,
-    }
-    _solver(**params)
-    timer = timeit.Timer(lambda: _solver(**params))
+    if solver is not None:
+        _solver = solver
+        params: dict[str, Any] = {
+            "stack": stack,
+            "wavelength": wavelength,
+            "kx": kx,
+            "polarization": polarization,
+            "method": method,
+        }
+        _solver(**params)
+        timer = timeit.Timer(lambda: _solver(**params))
+    elif jit:
+        def _solver(wl: Any, k: Any) -> Any:
+            res = solve(stack, wl, kx=k, polarization=polarization, method=method)
+            return res.R, res.T
+
+        _solver = nd.jit(_solver)
+        _solver(wavelength, kx)
+        timer = timeit.Timer(lambda: _solver(wavelength, kx))
+    else:
+        _solver = solve
+        params = {
+            "stack": stack,
+            "wavelength": wavelength,
+            "kx": kx,
+            "polarization": polarization,
+            "method": method,
+        }
+        _solver(**params)
+        timer = timeit.Timer(lambda: _solver(**params))
+
     times = timer.repeat(repeat=n_repeats, number=1)
     return {
         "mean": float(nd.mean(nd.array(times))),

@@ -151,6 +151,7 @@ if steady_backends:
             t_steady = time_solve(
                 stack, wavelength, kx=kx, polarization=Polarization.TE,
                 method=Method.SMATRIX,
+                jit=False,
             )
         steady_times[b] = t_steady["min"]
 
