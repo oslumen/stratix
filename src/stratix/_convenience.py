@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import numdiff as nd
 from phokaia import PlaneWave
 from phokaia import Polarization
@@ -23,7 +21,7 @@ def solve_angles(
     polarization: Polarization,
     method: Method = Method.AUTO,
     absorption: bool = False,
-    thicknesses: Any = None,
+    thicknesses: nd.ndarray | None = None,
 ) -> Result:
     """Compute reflectance/transmittance for given incidence angles.
 
@@ -104,7 +102,7 @@ def solve_from_source(
     polarization: Polarization,
     method: Method = Method.AUTO,
     absorption: bool = False,
-    thicknesses: Any = None,
+    thicknesses: nd.ndarray | None = None,
 ) -> Result:
     """Compute reflectance/transmittance from a PlaneWave source.
 

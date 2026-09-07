@@ -30,10 +30,14 @@ def _register_jax_pytrees() -> None:
     except ImportError:
         return
 
+    from contextlib import suppress
+
     from phokaia import Polarization
 
-    register_pytree_node(Polarization, lambda p: ([], p), lambda p, _: p)
-    register_pytree_node(Method, lambda m: ([], m), lambda m, _: m)
+    for enum_type in (Polarization, Method):
+        # suppress: already registered (re-import or upstream registration)
+        with suppress(ValueError):
+            register_pytree_node(enum_type, lambda x: ([], x), lambda x, _: x)
 
 
 _register_jax_pytrees()

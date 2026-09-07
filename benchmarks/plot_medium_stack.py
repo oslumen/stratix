@@ -13,8 +13,6 @@ the single-film case.
 # Three-layer stack: n = [1.0, 1.5, 3.5, 1.5, 1.0], each 1 µm thick.
 # 50 wavelengths (400–800 nm) × 50 kx values (0–1e7 rad/m).
 
-import timeit
-
 import numdiff as nd
 from phokaia import Polarization
 
@@ -143,14 +141,6 @@ heatmap(
 # and compilation so the measured repeats reflect steady-state
 # compiled performance.
 
-STATIC_ARGS: tuple[str, ...] = (
-    "stack",
-    "polarization",
-    "method",
-    "absorption",
-    "thicknesses",
-)
-
 jit_backends = [b for b in ("jax", "torch") if b in backends]
 if jit_backends:
     with backend_scope("numpy"):
@@ -175,24 +165,14 @@ if jit_backends:
             t_eager = time_solve(
                 stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
                 method=Method.SMATRIX,
-                jit=False,
             )
 
-            jit_solve_fn = nd.jit(  # type: ignore[assignment]
-                solve, static_argnames=STATIC_ARGS,
+            t_compiled = time_solve(
+                stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+                method=Method.SMATRIX,
+                jit=True,
             )
-            _ = jit_solve_fn(
-                stack, wavelengths, kx=kx_vals,
-                polarization=Polarization.TE, method=Method.SMATRIX,
-            )
-            timer = timeit.Timer(
-                lambda fn=jit_solve_fn: fn(
-                    stack, wavelengths, kx=kx_vals,
-                    polarization=Polarization.TE, method=Method.SMATRIX,
-                )
-            )
-            times = timer.repeat(repeat=10, number=1)
-            jit_compiled[b] = float(min(times))
+            jit_compiled[b] = t_compiled["min"]
 
         jit_eager[b] = t_eager["min"]
 
