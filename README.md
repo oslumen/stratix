@@ -42,7 +42,8 @@ stack = Stack(
 )
 
 result = stratix.solve(stack, wavelength=500e-9, kx=0.0, polarization=stratix.Polarization.TE)
-print(f"R = {result.R[0]:.6f}, T = {result.T[0]:.6f}")
+# R and T are always (Nlambda, Nk); scalar inputs are length-1 axes.
+print(f"R = {result.R[0, 0]:.6f}, T = {result.T[0, 0]:.6f}")
 ```
 
 ## Docs

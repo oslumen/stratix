@@ -50,7 +50,7 @@ def _stratix_solve(stack, wavelength, theta_deg, pol):
     n_inc = float(np.sqrt(eps_inc).real)
     kx = float(n_inc * k0 * np.sin(np.pi * theta_deg / 180))
     result = stratix.solve(stack, wavelength, kx, pol)
-    return float(result.R[0]), float(result.T[0])
+    return float(result.R[0, 0]), float(result.T[0, 0])
 
 
 class TestTmmSingleInterface:
@@ -378,7 +378,7 @@ class TestTmmLayerAbsorption:
                 result = stratix.solve(
                     stack, wavelength, kx, pol, absorption=True
                 )
-                A_s = [float(a) for a in result.layer_absorption]
+                A_s = [float(a[0, 0]) for a in result.layer_absorption]
                 A_t = _tmm_layer_absorption(
                     n_list, d_list, theta, wavelength, pol
                 )
@@ -412,7 +412,7 @@ class TestTmmLayerAbsorption:
                 result = stratix.solve(
                     stack, wavelength, kx, pol, absorption=True
                 )
-                A_s = [float(a) for a in result.layer_absorption]
+                A_s = [float(a[0, 0]) for a in result.layer_absorption]
                 A_t = _tmm_layer_absorption(
                     n_list, d_list, theta, wavelength, pol
                 )

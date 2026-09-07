@@ -98,7 +98,7 @@ def _medium_boundaries(thicknesses: nd.ndarray, n_media: int) -> nd.ndarray:
     """
     if n_media <= 2:
         return nd.zeros(1)
-    return nd.concatenate([nd.zeros(1), nd.cumsum(nd.asarray(thicknesses))])
+    return nd.concatenate([nd.zeros(1), nd.cumsum(nd.asarray(thicknesses), 0)])
 
 
 def _medium_offsets(boundaries: nd.ndarray) -> nd.ndarray:
@@ -137,7 +137,7 @@ def _medium_index(z: nd.ndarray, boundaries: nd.ndarray) -> nd.ndarray:
     -------
     ndarray of the same shape as ``z`` holding the medium index.
     """
-    counts = nd.zeros(nd.shape(z))
+    counts = nd.zeros(z.shape)
     for i in range(len(boundaries)):
         counts = counts + nd.where(
             z >= boundaries[i], nd.ones_like(counts), nd.zeros_like(counts)

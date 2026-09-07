@@ -13,16 +13,16 @@ from stratix._types import Method
 
 
 class TestScalarRegression:
-    """Scalar inputs still produce (1,) shaped results."""
+    """Scalar inputs produce the length-1 (1, 1) corner of the contract."""
 
-    def test_scalar_returns_1d(self, set_backend):
+    def test_scalar_returns_two_length_one_axes(self, set_backend):
         stack = Stack(
             superstrate=Material(epsilon=1.0),
             substrate=Material(epsilon=2.25),
         )
         result = stratix.solve(stack, 5e-7, kx=0.0, polarization=Polarization.TE)
-        assert result.R.shape == (1,)
-        assert result.T.shape == (1,)
+        assert result.R.shape == (1, 1)
+        assert result.T.shape == (1, 1)
         assert result.wavelengths.shape == (1,)
         assert result.kx.shape == (1,)
 
@@ -34,8 +34,8 @@ class TestScalarRegression:
         )
         expected_R = ((n_air - n_glass) / (n_air + n_glass)) ** 2
         result = stratix.solve(stack, 5e-7, kx=0.0, polarization=Polarization.TE)
-        assert abs(float(result.R[0]) - expected_R) < 1e-12
-        assert abs(float(result.R[0]) + float(result.T[0]) - 1.0) < 1e-12
+        assert abs(float(result.R[0, 0]) - expected_R) < 1e-12
+        assert abs(float(result.R[0, 0]) + float(result.T[0, 0]) - 1.0) < 1e-12
 
 
 class TestWavelengthArray:
@@ -50,8 +50,8 @@ class TestWavelengthArray:
         result = stratix.solve(
             stack, wavelengths, kx=0.0, polarization=Polarization.TE
         )
-        assert result.R.shape == (3,)
-        assert result.T.shape == (3,)
+        assert result.R.shape == (3, 1)
+        assert result.T.shape == (3, 1)
         assert result.wavelengths.shape == (3,)
         assert result.kx.shape == (1,)
 
@@ -66,8 +66,8 @@ class TestWavelengthArray:
             stack, wavelengths, kx=0.0, polarization=Polarization.TE
         )
         for i in range(len(wavelengths)):
-            R = float(result.R[i])
-            T = float(result.T[i])
+            R = float(result.R[i, 0])
+            T = float(result.T[i, 0])
             assert abs(R + T - 1.0) < 1e-12
 
     def test_equivalent_to_scalar_loop(self, set_backend):
@@ -83,8 +83,8 @@ class TestWavelengthArray:
             single = stratix.solve(
                 stack, wl, kx=0.0, polarization=Polarization.TE
             )
-            assert abs(float(result.R[i]) - float(single.R[0])) < 1e-12
-            assert abs(float(result.T[i]) - float(single.T[0])) < 1e-12
+            assert abs(float(result.R[i, 0]) - float(single.R[0, 0])) < 1e-12
+            assert abs(float(result.T[i, 0]) - float(single.T[0, 0])) < 1e-12
 
 
 class TestKxArray:
@@ -99,8 +99,8 @@ class TestKxArray:
         result = stratix.solve(
             stack, 5e-7, kx=kx_vals, polarization=Polarization.TE
         )
-        assert result.R.shape == (3,)
-        assert result.T.shape == (3,)
+        assert result.R.shape == (1, 3)
+        assert result.T.shape == (1, 3)
         assert result.wavelengths.shape == (1,)
         assert result.kx.shape == (3,)
 
@@ -114,7 +114,7 @@ class TestKxArray:
             stack, 5e-7, kx=kx_vals, polarization=Polarization.TE
         )
         for i in range(len(kx_vals)):
-            assert abs(float(result.R[i]) + float(result.T[i]) - 1.0) < 1e-12
+            assert abs(float(result.R[0, i]) + float(result.T[0, i]) - 1.0) < 1e-12
 
     def test_equivalent_to_scalar_loop(self, set_backend):
         stack = Stack(
@@ -129,7 +129,7 @@ class TestKxArray:
             single = stratix.solve(
                 stack, 5e-7, kx=kv, polarization=Polarization.TE
             )
-            assert abs(float(result.R[i]) - float(single.R[0])) < 1e-12
+            assert abs(float(result.R[0, i]) - float(single.R[0, 0])) < 1e-12
 
 
 class TestWavelengthKxGrid:
@@ -183,8 +183,8 @@ class TestMultiLayerVectorized:
         result = stratix.solve(
             stack, wavelengths, kx=0.0, polarization=Polarization.TE
         )
-        assert result.R.shape == (3,)
-        assert float(result.R[1]) < 1e-12  # zero reflection at design wavelength
+        assert result.R.shape == (3, 1)
+        assert float(result.R[1, 0]) < 1e-12  # zero reflection at design wavelength
 
 
 class TestMethodWithArrays:
@@ -200,7 +200,7 @@ class TestMethodWithArrays:
             stack, wavelengths, kx=0.0, polarization=Polarization.TE,
             method=Method.ABELES,
         )
-        assert result.R.shape == (3,)
+        assert result.R.shape == (3, 1)
         assert result.method_used == Method.ABELES
 
     def test_admittance_array(self, set_backend):
@@ -213,7 +213,7 @@ class TestMethodWithArrays:
             stack, wavelengths, kx=0.0, polarization=Polarization.TE,
             method=Method.ADMITTANCE,
         )
-        assert result.R.shape == (3,)
+        assert result.R.shape == (3, 1)
 
     def test_dtn_array(self, set_backend):
         stack = Stack(
@@ -225,4 +225,4 @@ class TestMethodWithArrays:
             stack, wavelengths, kx=0.0, polarization=Polarization.TE,
             method=Method.DTN,
         )
-        assert result.R.shape == (3,)
+        assert result.R.shape == (3, 1)

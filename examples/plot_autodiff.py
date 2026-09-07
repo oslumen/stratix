@@ -46,7 +46,7 @@ SCALE = 1e-6
 
 
 def R_vs_wl(wl):
-    return solve(stack, wl, kx=0.0, polarization=Polarization.TE).R[0]
+    return solve(stack, wl, kx=0.0, polarization=Polarization.TE).R[0, 0]
 
 
 _grad_wl = nd.grad(R_vs_wl)
@@ -102,7 +102,7 @@ def _R_vs_thickness(t):
     return solve(
         stack, design_wl, kx=0.0, polarization=Polarization.TE,
         thicknesses=nd.array([t], dtype=nd.float64),
-    ).R[0]
+    ).R[0, 0]
 
 
 _grad_t = nd.grad(_R_vs_thickness)

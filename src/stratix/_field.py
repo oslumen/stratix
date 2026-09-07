@@ -23,9 +23,13 @@ def compute_field_profile(result, z_positions) -> dict:
     Returns
     -------
     dict with keys ``E``, ``H``, ``z`` (all ndarrays).  ``E`` and ``H`` are
-    shaped ``sweep_shape + (Nz,)``: ``(Nz,)`` for scalar wavelength/kx,
-    ``(Nλ, Nz)`` or ``(Nk, Nz)`` for a single swept axis and
-    ``(Nλ, Nk, Nz)`` when both are swept.
+    always shaped ``(Nλ, Nk, Nz)``, following the sweep shape contract of
+    :func:`stratix.solve`: a scalar wavelength or kx counts as a length-1
+    axis, so a scalar solve gives ``(1, 1, Nz)``.
+
+    A ``Polarization.BOTH`` Result keeps only its TE intermediates, so the
+    profile computed from one is TE-only and carries no polarization axis.
+    Solve for ``TE`` or ``TM`` explicitly when you need a field profile.
 
     TE polarization (default):
         ``E`` = Ey (tangential electric field).
@@ -64,10 +68,12 @@ def compute_field_profile(result, z_positions) -> dict:
         # positions.
         z_rel = nd.where(in_medium, z - offsets[m], nd.zeros_like(z))
 
-        kz_m = nd.expand_dims(nd.asarray(kzs[m]), -1)
-        denom_m = nd.expand_dims(nd.asarray(denom_vals[m]), -1)
-        A_m = nd.expand_dims(nd.asarray(A[m]), -1)
-        B_m = nd.expand_dims(nd.asarray(B[m]), -1)
+        # Open a trailing z axis so the (Nλ, Nk) sweep grid broadcasts
+        # against the (Nz,) sample positions.
+        kz_m = nd.asarray(kzs[m])[..., None]
+        denom_m = nd.asarray(denom_vals[m])[..., None]
+        A_m = nd.asarray(A[m])[..., None]
+        B_m = nd.asarray(B[m])[..., None]
 
         forward = A_m * nd.exp(1j * kz_m * z_rel)
         backward = B_m * nd.exp(-1j * kz_m * z_rel)

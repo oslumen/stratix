@@ -49,9 +49,12 @@ result = solve(mirror, wavelengths, kx=0.0, polarization=Polarization.TE)
 
 wl_nm = wavelengths * 1e9
 
+# R is (Nλ, Nk) with the scalar kx as a length-1 axis; column 0 is the spectrum.
+R = np.asarray(result.R)[:, 0]
+
 fig, ax = plt.subplots(figsize=(6, 4))
-ax.plot(wl_nm, np.asarray(result.R))
-ax.fill_between(wl_nm, 0.99, np.maximum(np.asarray(result.R), 0.99), color="C0", alpha=0.15)
+ax.plot(wl_nm, R)
+ax.fill_between(wl_nm, 0.99, np.maximum(R, 0.99), color="C0", alpha=0.15)
 ax.set_xlabel("Wavelength (nm)")
 ax.set_ylabel("Reflectance")
 ax.set_ylim(0, 1.02)
@@ -72,8 +75,10 @@ for wl in [design_wl,452e-9]:
     result = solve(mirror, wl, kx=0.0, polarization=Polarization.TE, method=Method.SMATRIX)
 
     fields = compute_field_profile(result, z)
-    E = np.asarray(fields["E"])
-    H = np.asarray(fields["H"])
+    # Field profiles are (Nλ, Nk, Nz); this is a scalar solve, so take the
+    # lone (0, 0) sweep entry to get the profile along z.
+    E = np.asarray(fields["E"])[0, 0]
+    H = np.asarray(fields["H"])[0, 0]
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7, 5), sharex=True)
 

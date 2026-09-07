@@ -27,8 +27,8 @@ class TestFieldSingleInterfaceTE:
         z = nd.array([-eps, eps])
         field = stratix.compute_field_profile(result, z)
 
-        E_left = field["E"][0]
-        E_right = field["E"][1]
+        E_left = field["E"][0, 0][0]
+        E_right = field["E"][0, 0][1]
         assert abs(E_left - E_right) < 1e-8
 
     def test_h_continuous_at_interface(self, set_backend):
@@ -46,8 +46,8 @@ class TestFieldSingleInterfaceTE:
         z = nd.array([-eps, eps])
         field = stratix.compute_field_profile(result, z)
 
-        H_left = field["H"][0]
-        H_right = field["H"][1]
+        H_left = field["H"][0, 0][0]
+        H_right = field["H"][0, 0][1]
         assert abs(H_left - H_right) < 1e-4
 
     def test_standing_wave_superstrate(self, set_backend):
@@ -64,10 +64,10 @@ class TestFieldSingleInterfaceTE:
         z = nd.array([-wavelength / 4, 0.0])
         field = stratix.compute_field_profile(result, z)
 
-        E0_2 = float(abs(field["E"][1]) ** 2)
+        E0_2 = float(abs(field["E"][0, 0][1]) ** 2)
         assert abs(E0_2 - 0.64) < 1e-12
 
-        Em4_2 = float(abs(field["E"][0]) ** 2)
+        Em4_2 = float(abs(field["E"][0, 0][0]) ** 2)
         assert abs(Em4_2 - 1.44) < 1e-12
 
     def test_constant_power_substrate(self, set_backend):
@@ -84,7 +84,7 @@ class TestFieldSingleInterfaceTE:
         z = nd.array([1e-9, 100e-9, 200e-9])
         field = stratix.compute_field_profile(result, z)
 
-        E2_vals = [float(abs(ee) ** 2) for ee in field["E"]]
+        E2_vals = [float(abs(ee) ** 2) for ee in field["E"][0, 0]]
         for v in E2_vals:
             assert abs(v - E2_vals[0]) < 1e-12
 
@@ -107,10 +107,10 @@ class TestFieldSingleInterfaceTE:
         z = nd.array([-eps, eps])
         field = stratix.compute_field_profile(result, z)
 
-        E_left = field["E"][0]
-        E_right = field["E"][1]
-        H_left = field["H"][0]
-        H_right = field["H"][1]
+        E_left = field["E"][0, 0][0]
+        E_right = field["E"][0, 0][1]
+        H_left = field["H"][0, 0][0]
+        H_right = field["H"][0, 0][1]
 
         assert abs(E_left - E_right) < 1e-8
         assert abs(H_left - H_right) < 1e-4
@@ -144,14 +144,14 @@ class TestFieldMultiLayerTE:
         )
         field = stratix.compute_field_profile(result, z)
 
-        assert abs(field["E"][0] - field["E"][1]) < 1e-8
-        assert abs(field["H"][0] - field["H"][1]) < 1e-4
+        assert abs(field["E"][0, 0][0] - field["E"][0, 0][1]) < 1e-8
+        assert abs(field["H"][0, 0][0] - field["H"][0, 0][1]) < 1e-4
 
-        assert abs(field["E"][2] - field["E"][3]) < 1e-8
-        assert abs(field["H"][2] - field["H"][3]) < 1e-4
+        assert abs(field["E"][0, 0][2] - field["E"][0, 0][3]) < 1e-8
+        assert abs(field["H"][0, 0][2] - field["H"][0, 0][3]) < 1e-4
 
-        assert abs(field["E"][4] - field["E"][5]) < 1e-8
-        assert abs(field["H"][4] - field["H"][5]) < 1e-4
+        assert abs(field["E"][0, 0][4] - field["E"][0, 0][5]) < 1e-8
+        assert abs(field["H"][0, 0][4] - field["H"][0, 0][5]) < 1e-4
 
     def test_continuity_bragg_mirror(self, set_backend):
         n_low, n_high = 1.38, 2.3
@@ -194,10 +194,10 @@ class TestFieldMultiLayerTE:
 
         n_interfaces = len(z_interfaces)
         for i in range(n_interfaces):
-            E_left = field["E"][2 * i]
-            E_right = field["E"][2 * i + 1]
-            H_left = field["H"][2 * i]
-            H_right = field["H"][2 * i + 1]
+            E_left = field["E"][0, 0][2 * i]
+            E_right = field["E"][0, 0][2 * i + 1]
+            H_left = field["H"][0, 0][2 * i]
+            H_right = field["H"][0, 0][2 * i + 1]
             assert abs(E_left - E_right) < 1e-8, (
                 f"E discontinuity at interface {i}"
             )
@@ -238,7 +238,7 @@ class TestFieldMultiLayerTE:
         z = nd.array([total + 1e-9, total + 100e-9, total + 200e-9])
         field = stratix.compute_field_profile(result, z)
 
-        E2_vals = [float(abs(ee) ** 2) for ee in field["E"]]
+        E2_vals = [float(abs(ee) ** 2) for ee in field["E"][0, 0]]
         for v in E2_vals:
             assert abs(v - E2_vals[0]) < 1e-12, f"|E|^2 not constant in substrate: {E2_vals}"
 
@@ -259,9 +259,9 @@ class TestFieldMultiLayerTE:
         assert "E" in field
         assert "H" in field
         assert "z" in field
-        assert len(field["E"]) == 5
-        assert len(field["H"]) == 5
-        assert len(field["z"]) == 5
+        assert field["E"].shape == (1, 1, 5)
+        assert field["H"].shape == (1, 1, 5)
+        assert field["z"].shape == (5,)
 
 
 class TestFieldTM:
@@ -280,8 +280,8 @@ class TestFieldTM:
         z = nd.array([-eps, eps])
         field = stratix.compute_field_profile(result, z)
 
-        assert abs(field["E"][0] - field["E"][1]) < 1e-5
-        assert abs(field["H"][0] - field["H"][1]) < 1e-4
+        assert abs(field["E"][0, 0][0] - field["E"][0, 0][1]) < 1e-5
+        assert abs(field["H"][0, 0][0] - field["H"][0, 0][1]) < 1e-4
 
 
 def _sweep_stack():
@@ -316,8 +316,8 @@ class TestFieldSweep:
         z = nd.array([-100e-9, 0.0, 50e-9, 300e-9])
         field = stratix.compute_field_profile(result, z)
 
-        assert field["E"].shape == (3, 4)
-        assert field["H"].shape == (3, 4)
+        assert field["E"].shape == (3, 1, 4)
+        assert field["H"].shape == (3, 1, 4)
         assert field["z"].shape == (4,)
 
     def test_wavelength_sweep_matches_scalar(self, set_backend):
@@ -337,9 +337,9 @@ class TestFieldSweep:
                 stratix.solve(stack, wl, kx=0.0, polarization=Polarization.TE), z
             )
             for j in range(len(z)):
-                assert abs(swept["E"][i][j] - single["E"][j]) < 1e-10
-                scale = abs(single["H"][j])
-                assert abs(swept["H"][i][j] - single["H"][j]) < 1e-10 * max(
+                assert abs(swept["E"][i, 0, j] - single["E"][0, 0, j]) < 1e-10
+                scale = abs(single["H"][0, 0, j])
+                assert abs(swept["H"][i, 0, j] - single["H"][0, 0, j]) < 1e-10 * max(
                     1.0, float(scale)
                 )
 
@@ -374,5 +374,5 @@ class TestFieldSweep:
 
         for i in range(2):
             for j in (0, 2, 4):
-                assert abs(field["E"][i][j] - field["E"][i][j + 1]) < 1e-8
-                assert abs(field["H"][i][j] - field["H"][i][j + 1]) < 1e-4
+                assert abs(field["E"][i, 0, j] - field["E"][i, 0, j + 1]) < 1e-8
+                assert abs(field["H"][i, 0, j] - field["H"][i, 0, j + 1]) < 1e-4

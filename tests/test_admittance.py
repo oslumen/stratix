@@ -35,8 +35,8 @@ class TestAdmittanceSingleInterface:
         ref = _smatrix_ref(stack, wavelength, kx=0.0, polarization=Polarization.TE)
         res = _admittance_solve(stack, wavelength, kx=0.0, polarization=Polarization.TE)
 
-        assert abs(float(res.R[0]) - float(ref.R[0])) < 1e-12
-        assert abs(float(res.T[0]) - float(ref.T[0])) < 1e-12
+        assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12
+        assert abs(float(res.T[0, 0]) - float(ref.T[0, 0])) < 1e-12
         assert res.method_used == Method.ADMITTANCE
 
     def test_matches_smatrix_air_silicon(self, set_backend):
@@ -49,8 +49,8 @@ class TestAdmittanceSingleInterface:
         ref = _smatrix_ref(stack, wavelength, kx=0.0, polarization=Polarization.TE)
         res = _admittance_solve(stack, wavelength, kx=0.0, polarization=Polarization.TE)
 
-        assert abs(float(res.R[0]) - float(ref.R[0])) < 1e-12
-        assert abs(float(res.T[0]) - float(ref.T[0])) < 1e-12
+        assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12
+        assert abs(float(res.T[0, 0]) - float(ref.T[0, 0])) < 1e-12
 
     def test_matches_smatrix_off_normal(self, set_backend):
         n_air, n_glass = 1.0, 1.5
@@ -67,10 +67,10 @@ class TestAdmittanceSingleInterface:
             ref = _smatrix_ref(stack, wavelength, kx=kx, polarization=Polarization.TE)
             res = _admittance_solve(stack, wavelength, kx=kx, polarization=Polarization.TE)
 
-            assert abs(float(res.R[0]) - float(ref.R[0])) < 1e-12, (
+            assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12, (
                 f"theta={theta_deg}: R mismatch"
             )
-            assert abs(float(res.T[0]) - float(ref.T[0])) < 1e-12, (
+            assert abs(float(res.T[0, 0]) - float(ref.T[0, 0])) < 1e-12, (
                 f"theta={theta_deg}: T mismatch"
             )
 
@@ -86,8 +86,8 @@ class TestAdmittanceSingleInterface:
         ref = _smatrix_ref(stack, wavelength, kx=float(kx), polarization=Polarization.TE)
         res = _admittance_solve(stack, wavelength, kx=float(kx), polarization=Polarization.TE)
 
-        assert abs(float(res.R[0]) - float(ref.R[0])) < 1e-12
-        assert abs(float(res.T[0]) - float(ref.T[0])) < 1e-12
+        assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12
+        assert abs(float(res.T[0, 0]) - float(ref.T[0, 0])) < 1e-12
 
 
 class TestAdmittanceMultiLayer:
@@ -105,8 +105,8 @@ class TestAdmittanceMultiLayer:
         ref = _smatrix_ref(stack, wavelength, kx=0.0, polarization=Polarization.TE)
         res = _admittance_solve(stack, wavelength, kx=0.0, polarization=Polarization.TE)
 
-        assert abs(float(res.R[0]) - float(ref.R[0])) < 1e-12
-        assert abs(float(res.T[0]) - float(ref.T[0])) < 1e-12
+        assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12
+        assert abs(float(res.T[0, 0]) - float(ref.T[0, 0])) < 1e-12
 
     def test_matches_smatrix_ar_coating_TM(self, set_backend):
         n_air, n_mgf2, n_glass = 1.0, 1.38, 1.5
@@ -122,8 +122,8 @@ class TestAdmittanceMultiLayer:
         ref = _smatrix_ref(stack, wavelength, kx=0.0, polarization=Polarization.TM)
         res = _admittance_solve(stack, wavelength, kx=0.0, polarization=Polarization.TM)
 
-        assert abs(float(res.R[0]) - float(ref.R[0])) < 1e-12
-        assert abs(float(res.T[0]) - float(ref.T[0])) < 1e-12
+        assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12
+        assert abs(float(res.T[0, 0]) - float(ref.T[0, 0])) < 1e-12
 
     def test_matches_smatrix_two_layer(self, set_backend):
         n_air, n_a, n_b, n_sub = 1.0, 1.38, 2.0, 1.5
@@ -143,8 +143,8 @@ class TestAdmittanceMultiLayer:
         ref = _smatrix_ref(stack, wavelength, kx=0.0, polarization=Polarization.TE)
         res = _admittance_solve(stack, wavelength, kx=0.0, polarization=Polarization.TE)
 
-        assert abs(float(res.R[0]) - float(ref.R[0])) < 1e-12
-        assert abs(float(res.T[0]) - float(ref.T[0])) < 1e-12
+        assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12
+        assert abs(float(res.T[0, 0]) - float(ref.T[0, 0])) < 1e-12
 
     def test_matches_smatrix_bragg_mirror_TE(self, set_backend):
         n_low, n_high = 1.38, 2.3
@@ -167,8 +167,8 @@ class TestAdmittanceMultiLayer:
         ref = _smatrix_ref(stack, wavelength, kx=0.0, polarization=Polarization.TE)
         res = _admittance_solve(stack, wavelength, kx=0.0, polarization=Polarization.TE)
 
-        assert abs(float(res.R[0]) - float(ref.R[0])) < 1e-12
-        assert abs(float(res.T[0]) - float(ref.T[0])) < 1e-12
+        assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12
+        assert abs(float(res.T[0, 0]) - float(ref.T[0, 0])) < 1e-12
 
     def test_matches_smatrix_bragg_mirror_TM(self, set_backend):
         n_low, n_high = 1.38, 2.3
@@ -191,8 +191,8 @@ class TestAdmittanceMultiLayer:
         ref = _smatrix_ref(stack, wavelength, kx=0.0, polarization=Polarization.TM)
         res = _admittance_solve(stack, wavelength, kx=0.0, polarization=Polarization.TM)
 
-        assert abs(float(res.R[0]) - float(ref.R[0])) < 1e-12
-        assert abs(float(res.T[0]) - float(ref.T[0])) < 1e-12
+        assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12
+        assert abs(float(res.T[0, 0]) - float(ref.T[0, 0])) < 1e-12
 
     def test_matches_smatrix_off_normal_multilayer(self, set_backend):
         n_air, n_a, n_b, n_sub = 1.0, 1.38, 2.0, 1.5
@@ -214,10 +214,10 @@ class TestAdmittanceMultiLayer:
             ref = _smatrix_ref(stack, wavelength, kx=kx, polarization=Polarization.TE)
             res = _admittance_solve(stack, wavelength, kx=kx, polarization=Polarization.TE)
 
-            assert abs(float(res.R[0]) - float(ref.R[0])) < 1e-12, (
+            assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12, (
                 f"kx={kx}: R mismatch"
             )
-            assert abs(float(res.T[0]) - float(ref.T[0])) < 1e-12, (
+            assert abs(float(res.T[0, 0]) - float(ref.T[0, 0])) < 1e-12, (
                 f"kx={kx}: T mismatch"
             )
 
@@ -231,5 +231,5 @@ class TestAdmittanceMultiLayer:
         ref = _smatrix_ref(stack, wavelength, kx=0.0, polarization=Polarization.TE)
         res = _admittance_solve(stack, wavelength, kx=0.0, polarization=Polarization.TE)
 
-        assert abs(float(res.R[0]) - float(ref.R[0])) < 1e-12
-        assert abs(float(res.T[0]) - float(ref.T[0])) < 1e-12
+        assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12
+        assert abs(float(res.T[0, 0]) - float(ref.T[0, 0])) < 1e-12

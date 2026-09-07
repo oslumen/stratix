@@ -1,4 +1,8 @@
-"""Tests for autodiff gradient verification (Issue #25)."""
+"""Tests for autodiff gradient verification (Issue #25).
+
+Every gradient runs through the public :func:`stratix.solve`, which is
+trace-safe end to end (Issue #50) — there is no private raw wrapper left.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +12,9 @@ from phokaia import Layer
 from phokaia import Material
 from phokaia import Polarization
 from phokaia import Stack
+
+import stratix
+from stratix import Method
 
 
 def _central_fd(f, x, h=1e-8):
@@ -22,7 +29,6 @@ class TestGradWavelength:
         """dR/dλ via nd.grad matches central finite difference."""
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support grad")
-        from stratix._autodiff import _solve_raw
 
         n_air, n_film, n_sub = 1.0, 1.38, 1.5
         wavelength_0 = 5e-7
@@ -35,8 +41,10 @@ class TestGradWavelength:
         )
 
         def f(wl):
-            R, _ = _solve_raw(stack, wl, kx=0.0, polarization=Polarization.TE)
-            return R
+            result = stratix.solve(
+                stack, wl, kx=0.0, polarization=Polarization.TE
+            )
+            return result.R[0, 0]
 
         grad_ad = nd.grad(f)(wavelength_0)
         grad_fd = _central_fd(f, wavelength_0, h=1e-10)
@@ -49,7 +57,6 @@ class TestGradWavelength:
         """d(R+T)/dλ = 0 for lossless dielectric at off-resonance λ."""
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support grad")
-        from stratix._autodiff import _solve_raw
 
         n_air, n_film, n_sub = 1.0, 1.38, 1.5
         wavelength_0 = 5e-7
@@ -62,12 +69,16 @@ class TestGradWavelength:
         )
 
         def f_R(wl):
-            R, _ = _solve_raw(stack, wl, kx=0.0, polarization=Polarization.TE)
-            return R
+            result = stratix.solve(
+                stack, wl, kx=0.0, polarization=Polarization.TE
+            )
+            return result.R[0, 0]
 
         def f_T(wl):
-            _, T = _solve_raw(stack, wl, kx=0.0, polarization=Polarization.TE)
-            return T
+            result = stratix.solve(
+                stack, wl, kx=0.0, polarization=Polarization.TE
+            )
+            return result.T[0, 0]
 
         grad_R = float(nd.grad(f_R)(wavelength_0))
         grad_T = float(nd.grad(f_T)(wavelength_0))
@@ -83,7 +94,6 @@ class TestGradThickness:
         """dR/dt via nd.grad matches central finite difference."""
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support grad")
-        from stratix._autodiff import _solve_raw_with_thicknesses
 
         n_air, n_film, n_sub = 1.0, 1.38, 1.5
         wavelength = 5e-7
@@ -96,11 +106,11 @@ class TestGradThickness:
         )
 
         def f(t):
-            thicknesses = nd.array([t])
-            R, _ = _solve_raw_with_thicknesses(
-                stack, thicknesses, wavelength, kx=0.0, polarization=Polarization.TE
+            result = stratix.solve(
+                stack, wavelength, kx=0.0, polarization=Polarization.TE,
+                thicknesses=nd.array([t]),
             )
-            return R
+            return result.R[0, 0]
 
         grad_ad = nd.grad(f)(d0)
         grad_fd = _central_fd(f, d0, h=1e-12)
@@ -112,7 +122,6 @@ class TestGradThickness:
         """dT/dt via nd.grad matches central finite difference."""
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support grad")
-        from stratix._autodiff import _solve_raw_with_thicknesses
 
         n_air, n_film, n_sub = 1.0, 1.38, 1.5
         wavelength = 5e-7
@@ -125,11 +134,11 @@ class TestGradThickness:
         )
 
         def f(t):
-            thicknesses = nd.array([t])
-            _, T = _solve_raw_with_thicknesses(
-                stack, thicknesses, wavelength, kx=0.0, polarization=Polarization.TE
+            result = stratix.solve(
+                stack, wavelength, kx=0.0, polarization=Polarization.TE,
+                thicknesses=nd.array([t]),
             )
-            return T
+            return result.T[0, 0]
 
         grad_ad = nd.grad(f)(d0)
         grad_fd = _central_fd(f, d0, h=1e-12)
@@ -141,7 +150,6 @@ class TestGradThickness:
         """dR/dt + dT/dt = 0 for lossless dielectrics (energy conservation)."""
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support grad")
-        from stratix._autodiff import _solve_raw_with_thicknesses
 
         n_air, n_film, n_sub = 1.0, 1.38, 1.5
         wavelength = 5e-7
@@ -154,18 +162,18 @@ class TestGradThickness:
         )
 
         def f_R(t):
-            thicknesses = nd.array([t])
-            R, _ = _solve_raw_with_thicknesses(
-                stack, thicknesses, wavelength, kx=0.0, polarization=Polarization.TE
+            result = stratix.solve(
+                stack, wavelength, kx=0.0, polarization=Polarization.TE,
+                thicknesses=nd.array([t]),
             )
-            return R
+            return result.R[0, 0]
 
         def f_T(t):
-            thicknesses = nd.array([t])
-            _, T = _solve_raw_with_thicknesses(
-                stack, thicknesses, wavelength, kx=0.0, polarization=Polarization.TE
+            result = stratix.solve(
+                stack, wavelength, kx=0.0, polarization=Polarization.TE,
+                thicknesses=nd.array([t]),
             )
-            return T
+            return result.T[0, 0]
 
         grad_R = float(nd.grad(f_R)(d0))
         grad_T = float(nd.grad(f_T)(d0))
@@ -179,7 +187,6 @@ class TestMultiLayerGrad:
         """Layer-by-layer dR/dt matches FD for 2-layer stack."""
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support grad")
-        from stratix._autodiff import _solve_raw_with_thicknesses
 
         n_air, n_a, n_b, n_sub = 1.0, 1.38, 2.0, 1.5
         wavelength = 5e-7
@@ -199,10 +206,11 @@ class TestMultiLayerGrad:
         ):
             def f(t, idx=layer_idx, od_a=d_a, od_b=d_b):
                 ts = nd.array([t if idx == 0 else od_a, t if idx == 1 else od_b])
-                R, _ = _solve_raw_with_thicknesses(
-                    stack, ts, wavelength, kx=0.0, polarization=Polarization.TE
+                result = stratix.solve(
+                    stack, wavelength, kx=0.0, polarization=Polarization.TE,
+                    thicknesses=ts,
                 )
-                return R
+                return result.R[0, 0]
 
             grad_ad = nd.grad(f)(orig_d)
             grad_fd = _central_fd(f, orig_d, h=1e-12)
@@ -220,8 +228,6 @@ class TestGradThicknessAllMethods:
         """dR/dt via solve(thicknesses=...) matches FD for every method."""
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support grad")
-        import stratix
-        from stratix import Method
 
         n_air, n_film, n_sub = 1.0, 1.38, 1.5
         wavelength = 5e-7
@@ -248,7 +254,7 @@ class TestGradThicknessAllMethods:
                     method=method,
                     thicknesses=nd.array([t]),
                 )
-                return result.R[0]
+                return result.R[0, 0]
 
             grad_ad = nd.grad(f)(d0)
             grad_fd = _central_fd(f, d0, h=1e-12)
@@ -267,7 +273,6 @@ class TestJit:
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support grad")
 
-        from stratix._autodiff import _solve_raw
 
         stack = Stack(
             superstrate=Material(epsilon=1.0),
@@ -276,8 +281,10 @@ class TestJit:
         )
 
         def f(wl):
-            R, _ = _solve_raw(stack, wl, kx=0.0, polarization=Polarization.TE)
-            return R
+            result = stratix.solve(
+                stack, wl, kx=0.0, polarization=Polarization.TE
+            )
+            return result.R[0, 0]
 
         f_jit = nd.jit(f)
 
@@ -293,8 +300,6 @@ class TestJit:
         """nd.jit(solve, static_argnames=...) matches eager solve on sweeps."""
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support jit")
-        import stratix
-        from stratix import Method
 
         stack = Stack(
             superstrate=Material(epsilon=1.0),

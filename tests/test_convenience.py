@@ -37,8 +37,8 @@ class TestSolveAngles:
             stack, wavelength, kx=expected_kx, polarization=Polarization.TE
         )
 
-        assert abs(float(result_conv.R[0]) - float(result_direct.R[0])) < 1e-12
-        assert abs(float(result_conv.T[0]) - float(result_direct.T[0])) < 1e-12
+        assert abs(float(result_conv.R[0, 0]) - float(result_direct.R[0, 0])) < 1e-12
+        assert abs(float(result_conv.T[0, 0]) - float(result_direct.T[0, 0])) < 1e-12
         assert abs(float(result_conv.kx[0]) - float(result_direct.kx[0])) < 1e-12
 
     def test_normal_incidence(self, set_backend):
@@ -57,8 +57,8 @@ class TestSolveAngles:
             stack, wavelength, kx=0.0, polarization=Polarization.TE
         )
 
-        assert abs(float(result_conv.R[0]) - float(result_direct.R[0])) < 1e-12
-        assert abs(float(result_conv.T[0]) - float(result_direct.T[0])) < 1e-12
+        assert abs(float(result_conv.R[0, 0]) - float(result_direct.R[0, 0])) < 1e-12
+        assert abs(float(result_conv.T[0, 0]) - float(result_direct.T[0, 0])) < 1e-12
 
     def test_multiple_angles(self, set_backend):
         """Array of angles produces Result with matching kx values."""
@@ -74,10 +74,12 @@ class TestSolveAngles:
             stack, wavelength, angles, polarization=Polarization.TE
         )
 
-        assert len(result.R) == 3
-        assert len(result.T) == 3
-        assert len(result.kx) == 3
-        assert len(result.wavelengths) == 3
+        # Angles fill the Nk axis of the (Nλ, Nk) contract; the single
+        # wavelength is the length-1 Nλ axis.
+        assert result.R.shape == (1, 3)
+        assert result.T.shape == (1, 3)
+        assert result.kx.shape == (3,)
+        assert result.wavelengths.shape == (1,)
 
         for i, theta_deg in enumerate(angles):
             theta_rad = nd.array(theta_deg * nd.pi / 180)
@@ -107,8 +109,8 @@ class TestSolveAngles:
             stack, wavelength, kx=expected_kx, polarization=Polarization.TM
         )
 
-        assert abs(float(result_conv.R[0]) - float(result_direct.R[0])) < 1e-12
-        assert abs(float(result_conv.T[0]) - float(result_direct.T[0])) < 1e-12
+        assert abs(float(result_conv.R[0, 0]) - float(result_direct.R[0, 0])) < 1e-12
+        assert abs(float(result_conv.T[0, 0]) - float(result_direct.T[0, 0])) < 1e-12
 
     def test_angle_above_90_raises(self, set_backend):
         """θ > 90° should raise ValueError."""
@@ -145,8 +147,8 @@ class TestSolveAngles:
             result = stratix.solve_angles(
                 stack, wavelength, theta, polarization=Polarization.TE
             )
-            R = float(result.R[0])
-            T = float(result.T[0])
+            R = float(result.R[0, 0])
+            T = float(result.T[0, 0])
             assert abs(R + T - 1.0) < 1e-12, f"θ={theta}: R+T={R + T}"
 
     def test_method_auto_resolves_to_smatrix(self, set_backend):
@@ -170,7 +172,73 @@ class TestSolveAngles:
             stack, 633e-9, 30.0, polarization=Polarization.TE, absorption=False
         )
         assert result is not None
-        assert abs(float(result.R[0]) + float(result.T[0]) - 1.0) < 1e-12
+        assert abs(float(result.R[0, 0]) + float(result.T[0, 0]) - 1.0) < 1e-12
+
+
+class TestSolveAnglesShapeContract:
+    """solve_angles obeys the (Nλ, Nk) contract, BOTH and absorption too."""
+
+    @staticmethod
+    def _absorbing_stack() -> Stack:
+        from phokaia import Layer
+
+        return Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+            layers=[
+                Layer(
+                    thickness=40e-9,
+                    material=Material(epsilon=complex(-3.68, 2.90)),
+                ),
+            ],
+        )
+
+    def test_both_prepends_polarization_axis(self, set_backend):
+        """BOTH gives (2, 1, n_angles), not a TE-only (1, n_angles)."""
+        stack = self._absorbing_stack()
+        angles = [0.0, 30.0, 60.0]
+        both = stratix.solve_angles(
+            stack, 633e-9, angles, polarization=Polarization.BOTH
+        )
+        assert both.R.shape == (2, 1, 3)
+        assert both.T.shape == (2, 1, 3)
+
+        te = stratix.solve_angles(
+            stack, 633e-9, angles, polarization=Polarization.TE
+        )
+        tm = stratix.solve_angles(
+            stack, 633e-9, angles, polarization=Polarization.TM
+        )
+        assert float(nd.max(nd.abs(both.R[0] - te.R))) < 1e-14
+        assert float(nd.max(nd.abs(both.R[1] - tm.R))) < 1e-14
+
+    def test_absorption_fields_are_populated(self, set_backend):
+        """absorption=True fills layer_absorption and energy_balance."""
+        stack = self._absorbing_stack()
+        result = stratix.solve_angles(
+            stack, 633e-9, [0.0, 30.0, 60.0],
+            polarization=Polarization.TE, absorption=True,
+        )
+        assert result.layer_absorption is not None
+        assert result.layer_absorption.shape == (1, 1, 3)
+        assert result.energy_balance.shape == (1, 3)
+        for i in range(3):
+            assert abs(float(result.energy_balance[0, i]) - 1.0) < 1e-10
+            assert float(result.layer_absorption[0, 0, i]) > 0
+
+    def test_absorption_fields_under_both(self, set_backend):
+        """The TE/TM axis leads the absorption fields as well."""
+        stack = self._absorbing_stack()
+        result = stratix.solve_angles(
+            stack, 633e-9, [0.0, 45.0],
+            polarization=Polarization.BOTH, absorption=True,
+        )
+        assert result.layer_absorption.shape == (2, 1, 1, 2)
+        assert result.energy_balance.shape == (2, 1, 2)
+        for pol_axis in range(2):
+            for i in range(2):
+                balance = float(result.energy_balance[pol_axis, 0, i])
+                assert abs(balance - 1.0) < 1e-10
 
 
 class TestSolveFromSource:
@@ -209,8 +277,8 @@ class TestSolveFromSource:
             stack, wavelength, kx=0.0, polarization=Polarization.TE
         )
 
-        assert abs(float(result_src.R[0]) - float(result_direct.R[0])) < 1e-12
-        assert abs(float(result_src.T[0]) - float(result_direct.T[0])) < 1e-12
+        assert abs(float(result_src.R[0, 0]) - float(result_direct.R[0, 0])) < 1e-12
+        assert abs(float(result_src.T[0, 0]) - float(result_direct.T[0, 0])) < 1e-12
 
     def test_te_oblique_incidence(self, set_backend):
         """solve_from_source with θ=45 TE matches solve()."""
@@ -234,8 +302,8 @@ class TestSolveFromSource:
             stack, wavelength, kx=expected_kx, polarization=Polarization.TE
         )
 
-        assert abs(float(result_src.R[0]) - float(result_direct.R[0])) < 1e-12
-        assert abs(float(result_src.T[0]) - float(result_direct.T[0])) < 1e-12
+        assert abs(float(result_src.R[0, 0]) - float(result_direct.R[0, 0])) < 1e-12
+        assert abs(float(result_src.T[0, 0]) - float(result_direct.T[0, 0])) < 1e-12
         assert abs(float(result_src.kx[0]) - expected_kx) < 1e-12
 
     def test_tm_oblique_incidence(self, set_backend):
@@ -260,8 +328,8 @@ class TestSolveFromSource:
             stack, wavelength, kx=expected_kx, polarization=Polarization.TM
         )
 
-        assert abs(float(result_src.R[0]) - float(result_direct.R[0])) < 1e-12
-        assert abs(float(result_src.T[0]) - float(result_direct.T[0])) < 1e-12
+        assert abs(float(result_src.R[0, 0]) - float(result_direct.R[0, 0])) < 1e-12
+        assert abs(float(result_src.T[0, 0]) - float(result_direct.T[0, 0])) < 1e-12
 
     def test_dim_1_plane_wave(self, set_backend):
         """solve_from_source with dim=1 PlaneWave (kx=0)."""
@@ -285,8 +353,8 @@ class TestSolveFromSource:
             stack, wavelength, kx=0.0, polarization=Polarization.TE
         )
 
-        assert abs(float(result_src.R[0]) - float(result_direct.R[0])) < 1e-12
-        assert abs(float(result_src.T[0]) - float(result_direct.T[0])) < 1e-12
+        assert abs(float(result_src.R[0, 0]) - float(result_direct.R[0, 0])) < 1e-12
+        assert abs(float(result_src.T[0, 0]) - float(result_direct.T[0, 0])) < 1e-12
 
     def test_dim_2_plane_wave(self, set_backend):
         """solve_from_source with dim=2 PlaneWave (phi-based)."""
@@ -315,8 +383,8 @@ class TestSolveFromSource:
             stack, wavelength, kx=expected_kx, polarization=Polarization.TE
         )
 
-        assert abs(float(result_src.R[0]) - float(result_direct.R[0])) < 1e-12
-        assert abs(float(result_src.T[0]) - float(result_direct.T[0])) < 1e-12
+        assert abs(float(result_src.R[0, 0]) - float(result_direct.R[0, 0])) < 1e-12
+        assert abs(float(result_src.T[0, 0]) - float(result_direct.T[0, 0])) < 1e-12
 
     def test_zero_omega_raises(self, set_backend):
         """omega=0 should raise ValueError."""
@@ -362,6 +430,6 @@ class TestSolveFromSource:
             result = stratix.solve_from_source(
                 stack, pw, polarization=Polarization.TE
             )
-            R = float(result.R[0])
-            T = float(result.T[0])
+            R = float(result.R[0, 0])
+            T = float(result.T[0, 0])
             assert abs(R + T - 1.0) < 1e-12, f"θ={theta}: R+T={R + T}"

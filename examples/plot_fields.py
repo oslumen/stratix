@@ -39,9 +39,11 @@ result = solve(stack, design_wl, kx=0.0, polarization=Polarization.TE)
 
 # z-axis: superstrate (negative) → coating → substrate (positive)
 z = np.linspace(-200e-9, thickness + 200e-9, 500)
+# Field profiles are (Nλ, Nk, Nz); this is a scalar solve, so take the
+# lone (0, 0) sweep entry to get the profile along z.
 fields = compute_field_profile(result, z)
-E = np.asarray(fields["E"])
-H = np.asarray(fields["H"])
+E = np.asarray(fields["E"])[0, 0]
+H = np.asarray(fields["H"])[0, 0]
 
 # %%
 # The E-field magnitude is continuous across interfaces, while the

@@ -39,11 +39,12 @@ res = solve(
     stack, wavelengths, kx=0.0, polarization=Polarization.TE, absorption=True
 )
 
-# ``R`` and ``T`` follow the sweep shape (200,); ``layer_absorption`` puts the
-# layer index first, giving (n_layers, 200).
-R, T = res.R, res.T
-A = res.layer_absorption[0]
-balance = res.energy_balance
+# ``R`` and ``T`` are always (Nλ, Nk) — here (200, 1), since kx is scalar —
+# and ``layer_absorption`` puts the layer index first, giving (n_layers, 200, 1).
+# Take column 0 of each to get the spectrum.
+R, T = res.R[:, 0], res.T[:, 0]
+A = res.layer_absorption[0][:, 0]
+balance = res.energy_balance[:, 0]
 
 wl_nm = wavelengths * 1e9
 

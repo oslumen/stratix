@@ -36,8 +36,8 @@ class TestEvanescentIncidence:
         kx = k0 * 2.0  # well beyond free-space k0
         stack = self._stack()
         result = stratix.solve(stack, wl, kx=kx, polarization=pol)
-        assert float(result.R[0]) == pytest.approx(1.0, abs=1e-12)
-        assert float(result.T[0]) == pytest.approx(0.0, abs=1e-12)
+        assert float(result.R[0, 0]) == pytest.approx(1.0, abs=1e-12)
+        assert float(result.T[0, 0]) == pytest.approx(0.0, abs=1e-12)
 
     @pytest.mark.parametrize("pol", [Polarization.TE, Polarization.TM])
     def test_evanescent_T_zero_vectorized(self, set_backend, pol):
@@ -60,8 +60,8 @@ class TestEvanescentIncidence:
         kx = k0 * 2.0
         stack = self._multilayer_stack()
         result = stratix.solve(stack, wl, kx=kx, polarization=pol)
-        assert float(result.R[0]) == pytest.approx(1.0, abs=1e-12)
-        assert float(result.T[0]) == pytest.approx(0.0, abs=1e-12)
+        assert float(result.R[0, 0]) == pytest.approx(1.0, abs=1e-12)
+        assert float(result.T[0, 0]) == pytest.approx(0.0, abs=1e-12)
 
     @pytest.mark.parametrize("method", [Method.ABELES, Method.ADMITTANCE, Method.DTN])
     @pytest.mark.parametrize("pol", [Polarization.TE, Polarization.TM])
@@ -71,7 +71,7 @@ class TestEvanescentIncidence:
         kx = k0 * 2.0
         stack = self._stack()
         result = stratix.solve(stack, wl, kx=kx, polarization=pol, method=method)
-        assert float(result.R[0]) + float(result.T[0]) == pytest.approx(1.0, abs=1e-12)
+        assert float(result.R[0, 0]) + float(result.T[0, 0]) == pytest.approx(1.0, abs=1e-12)
 
     @pytest.mark.parametrize("pol", [Polarization.TE, Polarization.TM])
     def test_no_divide_by_zero_warning(self, set_backend, pol):

@@ -17,14 +17,14 @@ class TestBothPolarization:
     def test_polarization_enum_has_BOTH(self):
         assert Polarization.BOTH == "BOTH"
 
-    def test_result_R_shape_is_2_by_1(self, set_backend):
-        """BOTH R has shape (2, 1) for scalar inputs."""
+    def test_result_R_shape_prepends_polarization_axis(self, set_backend):
+        """BOTH R has shape (2, 1, 1) for scalar inputs."""
         stack = Stack(
             superstrate=Material(epsilon=1.0),
             substrate=Material(epsilon=2.25),
         )
         result = stratix.solve(stack, 5e-7, kx=0.0, polarization=Polarization.BOTH)
-        assert result.R.shape == (2, 1)
+        assert result.R.shape == (2, 1, 1)
 
     def test_index_0_matches_TE_normal_incidence(self, set_backend):
         """BOTH[0] equals independent TE solve at normal incidence."""
@@ -36,8 +36,8 @@ class TestBothPolarization:
         wavelength = 5e-7
         te = stratix.solve(stack, wavelength, kx=0.0, polarization=Polarization.TE)
         both = stratix.solve(stack, wavelength, kx=0.0, polarization=Polarization.BOTH)
-        assert abs(float(both.R[0, 0]) - float(te.R[0])) < 1e-12
-        assert abs(float(both.T[0, 0]) - float(te.T[0])) < 1e-12
+        assert abs(float(both.R[0, 0, 0]) - float(te.R[0, 0])) < 1e-12
+        assert abs(float(both.T[0, 0, 0]) - float(te.T[0, 0])) < 1e-12
 
     def test_index_1_matches_TM_normal_incidence(self, set_backend):
         """BOTH[1] equals independent TM solve at normal incidence."""
@@ -49,8 +49,8 @@ class TestBothPolarization:
         wavelength = 5e-7
         tm = stratix.solve(stack, wavelength, kx=0.0, polarization=Polarization.TM)
         both = stratix.solve(stack, wavelength, kx=0.0, polarization=Polarization.BOTH)
-        assert abs(float(both.R[1, 0]) - float(tm.R[0])) < 1e-12
-        assert abs(float(both.T[1, 0]) - float(tm.T[0])) < 1e-12
+        assert abs(float(both.R[1, 0, 0]) - float(tm.R[0, 0])) < 1e-12
+        assert abs(float(both.T[1, 0, 0]) - float(tm.T[0, 0])) < 1e-12
 
     def test_off_normal_TE_and_TM_differ(self, set_backend):
         """BOTH TE[0] and TM[1] differ at off-normal incidence."""
@@ -64,7 +64,7 @@ class TestBothPolarization:
         theta_rad = nd.array(45.0 * nd.pi / 180)
         kx = float(n_air * k0 * nd.sin(theta_rad))
         result = stratix.solve(stack, wavelength, kx=kx, polarization=Polarization.BOTH)
-        assert abs(float(result.R[0, 0]) - float(result.R[1, 0])) > 1e-6
+        assert abs(float(result.R[0, 0, 0]) - float(result.R[1, 0, 0])) > 1e-6
 
     def test_brewster_TM_near_zero(self, set_backend):
         """BOTH TM channel near zero at Brewster angle."""
@@ -78,7 +78,7 @@ class TestBothPolarization:
         theta_B = float(nd.arctan(nd.array(n_glass / n_air)))
         kx_B = n_air * k0 * float(nd.sin(nd.array(theta_B)))
         result = stratix.solve(stack, wavelength, kx=kx_B, polarization=Polarization.BOTH)
-        assert abs(float(result.R[1, 0])) < 1e-12
+        assert abs(float(result.R[1, 0, 0])) < 1e-12
 
     def test_energy_conservation_both_polarizations(self, set_backend):
         """R+T=1 for both TE and TM with lossless dielectrics."""
@@ -88,8 +88,8 @@ class TestBothPolarization:
             substrate=Material(epsilon=n_glass**2),
         )
         result = stratix.solve(stack, 5e-7, kx=0.0, polarization=Polarization.BOTH)
-        assert abs(float(result.R[0, 0]) + float(result.T[0, 0]) - 1.0) < 1e-12
-        assert abs(float(result.R[1, 0]) + float(result.T[1, 0]) - 1.0) < 1e-12
+        assert abs(float(result.R[0, 0, 0]) + float(result.T[0, 0, 0]) - 1.0) < 1e-12
+        assert abs(float(result.R[1, 0, 0]) + float(result.T[1, 0, 0]) - 1.0) < 1e-12
 
     def test_polarization_field_reports_BOTH(self, set_backend):
         """result.polarization is Polarization.BOTH."""
@@ -122,8 +122,8 @@ class TestBothPolarization:
             ],
         )
         result = stratix.solve(stack, 5e-7, kx=0.0, polarization=Polarization.BOTH)
-        assert abs(float(result.R[0, 0]) + float(result.T[0, 0]) - 1.0) < 1e-12
-        assert abs(float(result.R[1, 0]) + float(result.T[1, 0]) - 1.0) < 1e-12
+        assert abs(float(result.R[0, 0, 0]) + float(result.T[0, 0, 0]) - 1.0) < 1e-12
+        assert abs(float(result.R[1, 0, 0]) + float(result.T[1, 0, 0]) - 1.0) < 1e-12
 
     def test_total_internal_reflection_both(self, set_backend):
         """BOTH: both polarizations R→1 beyond critical angle."""
@@ -138,10 +138,10 @@ class TestBothPolarization:
         result = stratix.solve(
             stack, wavelength, kx=float(kx), polarization=Polarization.BOTH
         )
-        assert abs(float(result.R[0, 0]) - 1.0) < 1e-12
-        assert abs(float(result.R[1, 0]) - 1.0) < 1e-12
-        assert abs(float(result.T[0, 0])) < 1e-12
-        assert abs(float(result.T[1, 0])) < 1e-12
+        assert abs(float(result.R[0, 0, 0]) - 1.0) < 1e-12
+        assert abs(float(result.R[1, 0, 0]) - 1.0) < 1e-12
+        assert abs(float(result.T[0, 0, 0])) < 1e-12
+        assert abs(float(result.T[1, 0, 0])) < 1e-12
 
     def test_both_TE_matches_analytic_Fresnel(self, set_backend):
         """BOTH TE channel matches analytic TE Fresnel off-normal."""
@@ -160,7 +160,7 @@ class TestBothPolarization:
         kz1 = float(nd.sqrt(nd.array(float(n_sub**2) * k0**2 - kx**2)).real)
         r_te = (kz0 - kz1) / (kz0 + kz1)
         expected_R = float(abs(r_te) ** 2)
-        assert abs(float(result.R[0, 0]) - expected_R) < 1e-10
+        assert abs(float(result.R[0, 0, 0]) - expected_R) < 1e-10
 
     def test_both_TM_matches_analytic_Fresnel(self, set_backend):
         """BOTH TM channel matches analytic TM Fresnel off-normal."""
@@ -181,4 +181,4 @@ class TestBothPolarization:
         kz2 = float(nd.real(nd.sqrt(nd.array(eps2 * k0**2 - kx**2) + 0j)))
         r_tm = (eps2 * kz1 - eps1 * kz2) / (eps2 * kz1 + eps1 * kz2)
         expected_R = float(abs(r_tm) ** 2)
-        assert abs(float(result.R[1, 0]) - expected_R) < 1e-10
+        assert abs(float(result.R[1, 0, 0]) - expected_R) < 1e-10

@@ -15,8 +15,8 @@ class Result(NamedTuple):
 
     Parameters
     ----------
-    R : Power reflectance per (wavelength, kx) pair.
-    T : Power transmittance per (wavelength, kx) pair.
+    R : Power reflectance on the (wavelength, kx) grid.
+    T : Power transmittance on the (wavelength, kx) grid.
     wavelengths : Vacuum wavelengths in meters.
     kx : In-plane wavevector components in rad/m.
     polarization : Polarization used for the computation.
@@ -27,12 +27,14 @@ class Result(NamedTuple):
 
     Shapes
     ------
-    Write ``sweep`` for the shape ``R`` and ``T`` take: ``(1,)`` for scalar
-    wavelength and kx, ``(Nλ,)`` or ``(Nk,)`` when one of the two is an
-    array, and ``(Nλ, Nk)`` when both are.  ``energy_balance`` follows
-    ``sweep`` — except for scalar inputs, where it is 0-D — and
-    ``layer_absorption`` prepends the layer axis, giving
-    ``(n_layers,) + sweep`` (``(n_layers,)`` for scalar inputs).
+    ``R`` and ``T`` are always ``(Nλ, Nk)``.  A scalar wavelength or kx
+    counts as a length-1 axis, so a scalar solve returns ``(1, 1)`` — one
+    rule, no special cases.  ``energy_balance`` carries the same
+    ``(Nλ, Nk)`` shape and ``layer_absorption`` prepends the layer axis,
+    giving ``(n_layers, Nλ, Nk)``.
+
+    ``wavelengths`` and ``kx`` stay 1-D, ``(Nλ,)`` and ``(Nk,)``: they name
+    the sweep coordinates rather than following the grid.
 
     ``Polarization.BOTH`` prepends a TE/TM axis of size 2 to ``R``, ``T``,
     ``energy_balance`` and ``layer_absorption`` alike.

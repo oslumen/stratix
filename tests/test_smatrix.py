@@ -36,8 +36,8 @@ class TestSingleInterfaceTE:
         )
 
         expected_R = _analytical_R_TE(n_air, n_glass)
-        R = float(result.R[0])
-        T = float(result.T[0])
+        R = float(result.R[0, 0])
+        T = float(result.T[0, 0])
 
         assert abs(R - expected_R) < 1e-12
         assert abs(R + T - 1.0) < 1e-12
@@ -59,8 +59,8 @@ class TestSingleInterfaceTE:
         )
 
         expected_R = _analytical_R_TE(n_air, n_si)
-        R = float(result.R[0])
-        T = float(result.T[0])
+        R = float(result.R[0, 0])
+        T = float(result.T[0, 0])
 
         assert abs(R - expected_R) < 1e-12
         assert abs(R + T - 1.0) < 1e-12
@@ -83,7 +83,7 @@ class TestSingleInterfaceTE:
         )
 
         expected_R = _analytical_R_TE(n_air, n_metal)
-        R = float(result.R[0])
+        R = float(result.R[0, 0])
 
         assert abs(R - expected_R) < 1e-12
         assert R > 0.9
@@ -102,8 +102,8 @@ class TestSingleInterfaceTE:
                 kx=kx,
                 polarization=Polarization.TE,
             )
-            R = float(result.R[0])
-            T = float(result.T[0])
+            R = float(result.R[0, 0])
+            T = float(result.T[0, 0])
             assert abs(R + T - 1.0) < 1e-12, f"R+T={R + T} at kx={kx}"
 
     def test_method_auto_resolves_to_smatrix(self, set_backend):
@@ -167,7 +167,7 @@ class TestSingleInterfaceTE:
                 kx=kx,
                 polarization=Polarization.TE,
             )
-            R = float(result.R[0])
+            R = float(result.R[0, 0])
             assert abs(R - expected_R) < 1e-10, (
                 f"θ={theta_deg}°: R={R}, expected={expected_R}"
             )
@@ -190,8 +190,8 @@ class TestSingleInterfaceTE:
             kx=float(kx),
             polarization=Polarization.TE,
         )
-        R = float(result.R[0])
-        T = float(result.T[0])
+        R = float(result.R[0, 0])
+        T = float(result.T[0, 0])
 
         assert abs(R - 1.0) < 1e-12
         assert abs(T) < 1e-12
@@ -221,8 +221,8 @@ class TestMultiLayerTE:
             polarization=Polarization.TE,
         )
 
-        R = float(result.R[0])
-        T = float(result.T[0])
+        R = float(result.R[0, 0])
+        T = float(result.T[0, 0])
 
         # Ideal AR coating: R = ((n0*n2 - n1^2)/(n0*n2 + n1^2))^2
         expected_R = (
@@ -255,8 +255,8 @@ class TestMultiLayerTE:
             polarization=Polarization.TE,
         )
 
-        R = float(result.R[0])
-        T = float(result.T[0])
+        R = float(result.R[0, 0])
+        T = float(result.T[0, 0])
         assert abs(R + T - 1.0) < 1e-12
 
     def test_two_layer_stack(self, set_backend):
@@ -282,8 +282,8 @@ class TestMultiLayerTE:
             polarization=Polarization.TE,
         )
 
-        R = float(result.R[0])
-        T = float(result.T[0])
+        R = float(result.R[0, 0])
+        T = float(result.T[0, 0])
         assert abs(R + T - 1.0) < 1e-12
 
     def test_bragg_mirror_convergence(self, set_backend):
@@ -316,7 +316,7 @@ class TestMultiLayerTE:
                 kx=0.0,
                 polarization=Polarization.TE,
             )
-            R_values.append(float(result.R[0]))
+            R_values.append(float(result.R[0, 0]))
 
         # Reflectance should increase monotonically with layer count
         for i in range(len(R_values) - 1):
@@ -340,8 +340,8 @@ class TestMultiLayerTE:
         )
 
         expected_R = _analytical_R_TE(n_air, n_glass)
-        R = float(result.R[0])
-        T = float(result.T[0])
+        R = float(result.R[0, 0])
+        T = float(result.T[0, 0])
 
         assert abs(R - expected_R) < 1e-12
         assert abs(R + T - 1.0) < 1e-12
@@ -368,8 +368,8 @@ class TestMultiLayerTE:
                 kx=kx,
                 polarization=Polarization.TE,
             )
-            R = float(result.R[0])
-            T = float(result.T[0])
+            R = float(result.R[0, 0])
+            T = float(result.T[0, 0])
             assert abs(R + T - 1.0) < 1e-12, f"R+T={R + T} at kx={kx}"
 
 
@@ -390,8 +390,8 @@ class TestSingleInterfaceTM:
             stack, wavelength, kx=0.0, polarization=Polarization.TM
         )
 
-        assert abs(float(result_TE.R[0]) - float(result_TM.R[0])) < 1e-12
-        assert abs(float(result_TE.T[0]) - float(result_TM.T[0])) < 1e-12
+        assert abs(float(result_TE.R[0, 0]) - float(result_TM.R[0, 0])) < 1e-12
+        assert abs(float(result_TE.T[0, 0]) - float(result_TM.T[0, 0])) < 1e-12
 
     def test_off_normal_differs_from_TE(self, set_backend):
         """TM R differs from TE R at off-normal incidence."""
@@ -413,8 +413,8 @@ class TestSingleInterfaceTM:
             stack, wavelength, kx=kx, polarization=Polarization.TM
         )
 
-        R_TE = float(result_TE.R[0])
-        R_TM = float(result_TM.R[0])
+        R_TE = float(result_TE.R[0, 0])
+        R_TM = float(result_TM.R[0, 0])
         assert abs(R_TM - R_TE) > 1e-6, (
             f"TM and TE should differ off-normal, got R_TE={R_TE}, R_TM={R_TM}"
         )
@@ -432,8 +432,8 @@ class TestSingleInterfaceTM:
         kx_B = n_air * k0 * float(nd.sin(nd.array(theta_B)))
 
         result = stratix.solve(stack, wavelength, kx=kx_B, polarization=Polarization.TM)
-        R = float(result.R[0])
-        T = float(result.T[0])
+        R = float(result.R[0, 0])
+        T = float(result.T[0, 0])
 
         assert abs(R) < 1e-12, f"TM R should be 0 at Brewster angle, got R={R}"
         assert abs(T - 1.0) < 1e-12, f"T should be 1 at Brewster angle, got T={T}"
@@ -451,7 +451,7 @@ class TestSingleInterfaceTM:
         kx = float(n_air * k0 * nd.sin(theta_grazing))
 
         result = stratix.solve(stack, wavelength, kx=kx, polarization=Polarization.TM)
-        R = float(result.R[0])
+        R = float(result.R[0, 0])
 
         assert R > 0.9999
 
@@ -466,8 +466,8 @@ class TestSingleInterfaceTM:
             result = stratix.solve(
                 stack, wavelength, kx=kx, polarization=Polarization.TM
             )
-            R = float(result.R[0])
-            T = float(result.T[0])
+            R = float(result.R[0, 0])
+            T = float(result.T[0, 0])
             assert abs(R + T - 1.0) < 1e-12, f"R+T={R + T} at kx={kx}"
 
     def test_total_internal_reflection(self, set_backend):
@@ -483,8 +483,8 @@ class TestSingleInterfaceTM:
         result = stratix.solve(
             stack, wavelength, kx=float(kx), polarization=Polarization.TM
         )
-        R = float(result.R[0])
-        T = float(result.T[0])
+        R = float(result.R[0, 0])
+        T = float(result.T[0, 0])
         assert abs(R - 1.0) < 1e-12
         assert abs(T) < 1e-12
 
@@ -512,7 +512,7 @@ class TestSingleInterfaceTM:
             result = stratix.solve(
                 stack, wavelength, kx=kx, polarization=Polarization.TM
             )
-            R = float(result.R[0])
+            R = float(result.R[0, 0])
 
             assert abs(R - expected_R) < 1e-10, (
                 f"θ={theta_deg}°: R={R}, expected={expected_R}"
@@ -538,7 +538,7 @@ class TestSingleInterfaceTM:
         r_TE = (kz0 - kz1) / (kz0 + kz1)
         expected_R = float(abs(r_TE) ** 2)
 
-        assert abs(float(result.R[0]) - expected_R) < 1e-10
+        assert abs(float(result.R[0, 0]) - expected_R) < 1e-10
 
 
 class TestMultiLayerTM:
@@ -556,8 +556,8 @@ class TestMultiLayerTM:
 
         result = stratix.solve(stack, wavelength, kx=0.0, polarization=Polarization.TM)
 
-        R = float(result.R[0])
-        T = float(result.T[0])
+        R = float(result.R[0, 0])
+        T = float(result.T[0, 0])
         expected_R = (
             (n_air * n_glass - n_mgf2**2) / (n_air * n_glass + n_mgf2**2)
         ) ** 2
@@ -583,8 +583,8 @@ class TestMultiLayerTM:
             result = stratix.solve(
                 stack, wavelength, kx=kx, polarization=Polarization.TM
             )
-            R = float(result.R[0])
-            T = float(result.T[0])
+            R = float(result.R[0, 0])
+            T = float(result.T[0, 0])
             assert abs(R + T - 1.0) < 1e-12, f"R+T={R + T} at kx={kx}"
 
     def test_bragg_mirror_convergence(self, set_backend):
@@ -613,7 +613,7 @@ class TestMultiLayerTM:
             result = stratix.solve(
                 stack, wavelength, kx=0.0, polarization=Polarization.TM
             )
-            R_values.append(float(result.R[0]))
+            R_values.append(float(result.R[0, 0]))
 
         for i in range(len(R_values) - 1):
             assert R_values[i + 1] > R_values[i], f"R not monotonic: {R_values}"
@@ -637,8 +637,8 @@ class TestMultiLayerTM:
         kx = float(n_air * k0 * nd.sin(theta_rad_arr))
 
         result = stratix.solve(stack, wavelength, kx=kx, polarization=Polarization.TM)
-        R = float(result.R[0])
-        T = float(result.T[0])
+        R = float(result.R[0, 0])
+        T = float(result.T[0, 0])
         assert abs(R + T - 1.0) < 1e-12
 
 
@@ -667,10 +667,10 @@ class TestThicknessOverride:
                 stack, 5e-7, kx=0.0, polarization=Polarization.TE,
                 method=method, thicknesses=thicknesses_override,
             )
-            assert abs(float(orig.R[0]) - float(over.R[0])) < 1e-12, (
+            assert abs(float(orig.R[0, 0]) - float(over.R[0, 0])) < 1e-12, (
                 f"{method.value}: override R differs from original"
             )
-            assert abs(float(orig.T[0]) - float(over.T[0])) < 1e-12, (
+            assert abs(float(orig.T[0, 0]) - float(over.T[0, 0])) < 1e-12, (
                 f"{method.value}: override T differs from original"
             )
 
@@ -697,7 +697,7 @@ class TestThicknessOverride:
                 stack, 5e-7, kx=0.0, polarization=Polarization.TE,
                 method=method, thicknesses=thick_mod,
             )
-            assert abs(float(orig.R[0]) - float(mod.R[0])) > 1e-10, (
+            assert abs(float(orig.R[0, 0]) - float(mod.R[0, 0])) > 1e-10, (
                 f"{method.value}: R should differ with different thickness"
             )
 
@@ -741,7 +741,7 @@ class TestThicknessOverride:
             thicknesses=None,
         )
 
-        assert abs(float(result.R[0]) + float(result.T[0]) - 1.0) < 1e-12
+        assert abs(float(result.R[0, 0]) + float(result.T[0, 0]) - 1.0) < 1e-12
 
     def test_intermediates_reflects_override(self, set_backend):
         """intermediates['thicknesses'] uses override, not stack values."""
@@ -785,7 +785,7 @@ class TestThicknessOverride:
             polarization=Polarization.TE, thicknesses=thicknesses,
         )
 
-        assert abs(float(result.R[0]) + float(result.T[0]) - 1.0) < 1e-12
+        assert abs(float(result.R[0, 0]) + float(result.T[0, 0]) - 1.0) < 1e-12
 
     def test_all_methods_agree_same_thickness_override(self, set_backend):
         """All methods produce same R/T for zero-layer stack with override."""
@@ -801,15 +801,15 @@ class TestThicknessOverride:
                 method=method, thicknesses=None,
             )
 
-        ref_R = float(results[Method.SMATRIX].R[0])
-        ref_T = float(results[Method.SMATRIX].T[0])
+        ref_R = float(results[Method.SMATRIX].R[0, 0])
+        ref_T = float(results[Method.SMATRIX].T[0, 0])
 
         for method in [Method.ABELES, Method.ADMITTANCE, Method.DTN]:
-            assert abs(float(results[method].R[0]) - ref_R) < 1e-12, (
+            assert abs(float(results[method].R[0, 0]) - ref_R) < 1e-12, (
                 f"{method.value} R differs from SMATRIX: "
-                f"{float(results[method].R[0])} vs {ref_R}"
+                f"{float(results[method].R[0, 0])} vs {ref_R}"
             )
-            assert abs(float(results[method].T[0]) - ref_T) < 1e-12, (
+            assert abs(float(results[method].T[0, 0]) - ref_T) < 1e-12, (
                 f"{method.value} T differs from SMATRIX: "
-                f"{float(results[method].T[0])} vs {ref_T}"
+                f"{float(results[method].T[0, 0])} vs {ref_T}"
             )

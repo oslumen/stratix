@@ -39,16 +39,31 @@ def _validate_thicknesses(thicknesses: Any, stack: Stack) -> None:
         )
 
 
-def _scalar_solve(
+def _sweep_axis(value: Any) -> nd.ndarray:
+    """Promote a sweep input to a 1-D ndarray axis.
+
+    A scalar wavelength or kx becomes a length-1 axis, so that every solve
+    carries both sweep axes and the output shape contract has no special
+    cases.  Values that already expose ``ndim`` are passed through
+    untouched, which keeps traced arrays traced.
+    """
+    arr = value if hasattr(value, "ndim") else nd.asarray(value)
+    # Reshape through the ndarray's own method rather than ``nd.reshape``:
+    # the dispatched call rejects an ndarray produced by a different backend
+    # than the active one, which callers do pass (the benchmarks build their
+    # sweep grids once and run them through every backend).
+    return arr if arr.ndim > 0 else arr.reshape(1)
+
+
+def _dispatch_solve(
     stack: Stack,
     wavelength: float | nd.ndarray,
     kx: float | nd.ndarray,
     polarization: Polarization,
     resolved: Method,
-    absorption: bool,
     thicknesses: Any = None,
 ) -> tuple[nd.ndarray, nd.ndarray, dict]:
-    """Call the appropriate solver for scalar or array inputs."""
+    """Call the solver selected by ``resolved``."""
     if resolved == Method.SMATRIX:
         return _smatrix_solve(stack, wavelength, kx, polarization, thicknesses=thicknesses)
     elif resolved == Method.ABELES:
@@ -74,15 +89,15 @@ def _absorption_fields(
     amplitude information, so they report a single lumped ``1 - R - T``.
 
     ``layer_absorption`` gets the layer index as its leading axis and the
-    sweep shape of ``R`` behind it; ``energy_balance`` carries the sweep
-    shape alone.
+    ``(Nλ, Nk)`` sweep shape of ``R`` behind it; ``energy_balance`` carries
+    the sweep shape alone.
     """
     if resolved == Method.SMATRIX:
         terms = _layer_absorption(intermediates)
     else:
         terms = [1.0 - R - T]
 
-    layer_abs = nd.stack(terms) if terms else nd.zeros((0, *nd.shape(R)))
+    layer_abs = nd.stack(terms) if terms else nd.zeros((0, *R.shape))
 
     energy_bal = R + T
     for term in terms:
@@ -121,6 +136,18 @@ def solve(
     Returns
     -------
     Result with ``R``, ``T``, and metadata fields.
+
+    Shapes
+    ------
+    ``R`` and ``T`` are always ``(Nλ, Nk)``; a scalar ``wavelength`` or
+    ``kx`` counts as a length-1 axis, so there are no special cases to
+    remember.  ``Polarization.BOTH`` prepends a TE/TM axis of size 2.
+    ``energy_balance`` follows the same rule and ``layer_absorption``
+    inserts the layer axis directly in front of the sweep axes.
+
+    Nothing between the inputs and the returned fields casts to ``float``
+    or wraps values in a Python list, so ``nd.grad`` of a function calling
+    ``solve()`` works on the autodiff backends.
     """
     resolved = Method.SMATRIX if method == Method.AUTO else method
 
@@ -134,7 +161,7 @@ def solve(
         if absorption:
             layer_abs = nd.stack([res_te.layer_absorption, res_tm.layer_absorption])
             energy_bal = nd.stack([res_te.energy_balance, res_tm.energy_balance])
-        result = Result(
+        return Result(
             R=nd.stack([res_te.R, res_tm.R]),
             T=nd.stack([res_te.T, res_tm.T]),
             wavelengths=res_te.wavelengths,
@@ -145,63 +172,32 @@ def solve(
             energy_balance=energy_bal,
             intermediates=res_te.intermediates,
         )
-        return result
 
-    wl_arr = wavelength if hasattr(wavelength, 'ndim') else nd.asarray(wavelength)
-    kx_arr = kx if hasattr(kx, 'ndim') else nd.asarray(kx)
+    wl_axis = _sweep_axis(wavelength)
+    kx_axis = _sweep_axis(kx)
 
-    if wl_arr.ndim == 0 and kx_arr.ndim == 0:
-        R, T, intermediates = _scalar_solve(
-            stack, wl_arr, kx_arr, polarization, resolved, absorption, thicknesses
-        )
-        layer_abs = None
-        energy_bal = None
-        if absorption:
-            layer_abs, energy_bal = _absorption_fields(R, T, intermediates, resolved)
-        result = Result(
-            R=nd.array([R]),
-            T=nd.array([T]),
-            wavelengths=nd.array([wl_arr]),
-            kx=nd.array([kx_arr]),
-            polarization=polarization,
-            method_used=resolved,
-            layer_absorption=layer_abs,
-            energy_balance=energy_bal,
-            intermediates=intermediates,
-        )
-        return result
-
-    wl_is_arr = wl_arr.ndim > 0
-    kx_is_arr = kx_arr.ndim > 0
-
-    if wl_is_arr and kx_is_arr:
-        wl_bcast = wl_arr.reshape(-1, 1)
-        kx_bcast = kx_arr.reshape(1, -1)
-    else:
-        wl_bcast = wl_arr
-        kx_bcast = kx_arr
-
-    R, T, intermediates = _scalar_solve(
-        stack, wl_bcast, kx_bcast, polarization, resolved, absorption, thicknesses
+    R, T, intermediates = _dispatch_solve(
+        stack,
+        wl_axis.reshape(-1, 1),
+        kx_axis.reshape(1, -1),
+        polarization,
+        resolved,
+        thicknesses,
     )
-
-    wl_out = wl_arr if wl_is_arr else nd.array([wl_arr])
-    kx_out = kx_arr if kx_is_arr else nd.array([kx_arr])
 
     layer_abs = None
     energy_bal = None
     if absorption:
         layer_abs, energy_bal = _absorption_fields(R, T, intermediates, resolved)
 
-    result = Result(
+    return Result(
         R=R,
         T=T,
-        wavelengths=wl_out,
-        kx=kx_out,
+        wavelengths=wl_axis,
+        kx=kx_axis,
         polarization=polarization,
         method_used=resolved,
         layer_absorption=layer_abs,
         energy_balance=energy_bal,
         intermediates=intermediates,
     )
-    return result

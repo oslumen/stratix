@@ -41,10 +41,11 @@ tm = solve_angles(interface, wavelength, angles, Polarization.TM)
 n_glass, n_air = 1.52, 1.0
 theta_c = np.degrees(np.arcsin(n_air / n_glass))
 
-R_te = np.asarray(te.R)
-T_te = np.asarray(te.T)
-R_tm = np.asarray(tm.R)
-T_tm = np.asarray(tm.T)
+# Angles fill the Nk axis of the (Nλ, Nk) grid, so row 0 is the angle scan.
+R_te = np.asarray(te.R)[0]
+T_te = np.asarray(te.T)[0]
+R_tm = np.asarray(tm.R)[0]
+T_tm = np.asarray(tm.T)[0]
 
 fig, (ax_r, ax_t) = plt.subplots(1, 2, figsize=(10, 4), sharex=True)
 

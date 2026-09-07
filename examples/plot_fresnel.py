@@ -38,8 +38,9 @@ n_air, n_glass = 1.0, 1.52
 brewster_deg = np.degrees(np.arctan(n_glass / n_air))
 
 fig, ax = plt.subplots(figsize=(6, 4))
-ax.plot(angles, np.asarray(res_te.R), label="TE (s)")
-ax.plot(angles, np.asarray(res_tm.R), label="TM (p)")
+# Angles fill the Nk axis of the (Nλ, Nk) grid, so row 0 is the angle scan.
+ax.plot(angles, np.asarray(res_te.R)[0], label="TE (s)")
+ax.plot(angles, np.asarray(res_tm.R)[0], label="TM (p)")
 ax.axvline(brewster_deg, color="gray", linestyle="--", alpha=0.6)
 ax.annotate(
     f"Brewster\n{brewster_deg:.1f}°",

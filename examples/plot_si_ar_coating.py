@@ -40,8 +40,9 @@ coated = Stack(
 
 wavelengths = nd.linspace(400e-9, 800e-9, 300)
 
-R_bare = solve(bare, wavelengths, kx=0.0, polarization=Polarization.TE).R
-R_coated = solve(coated, wavelengths, kx=0.0, polarization=Polarization.TE).R
+# R is (Nλ, Nk) with the scalar kx as a length-1 axis; column 0 is the spectrum.
+R_bare = solve(bare, wavelengths, kx=0.0, polarization=Polarization.TE).R[:, 0]
+R_coated = solve(coated, wavelengths, kx=0.0, polarization=Polarization.TE).R[:, 0]
 
 # %%
 # The coated stack drops from 30.9% to 0.44% reflectance at 550 nm.
