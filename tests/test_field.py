@@ -282,3 +282,97 @@ class TestFieldTM:
 
         assert abs(field["E"][0] - field["E"][1]) < 1e-5
         assert abs(field["H"][0] - field["H"][1]) < 1e-4
+
+
+def _sweep_stack():
+    n_air, n_a, n_b, n_sub = 1.0, 1.38, 2.0, 1.5
+    wavelength = 5e-7
+    return Stack(
+        superstrate=Material(epsilon=n_air**2),
+        substrate=Material(epsilon=n_sub**2),
+        layers=[
+            Layer(
+                thickness=wavelength / (4 * n_a),
+                material=Material(epsilon=n_a**2),
+            ),
+            Layer(
+                thickness=wavelength / (4 * n_b),
+                material=Material(epsilon=n_b**2),
+            ),
+        ],
+    )
+
+
+class TestFieldSweep:
+    """Field profiles for array wavelength/kx sweeps — Issue #47."""
+
+    def test_wavelength_sweep_shape(self, set_backend):
+        stack = _sweep_stack()
+        wavelengths = nd.array([4e-7, 5e-7, 6e-7])
+        result = stratix.solve(
+            stack, wavelengths, kx=0.0, polarization=Polarization.TE
+        )
+
+        z = nd.array([-100e-9, 0.0, 50e-9, 300e-9])
+        field = stratix.compute_field_profile(result, z)
+
+        assert field["E"].shape == (3, 4)
+        assert field["H"].shape == (3, 4)
+        assert field["z"].shape == (4,)
+
+    def test_wavelength_sweep_matches_scalar(self, set_backend):
+        stack = _sweep_stack()
+        wl_list = [4e-7, 5e-7, 6e-7]
+        z = nd.array([-100e-9, 0.0, 50e-9, 120e-9, 300e-9])
+
+        swept = stratix.compute_field_profile(
+            stratix.solve(
+                stack, nd.array(wl_list), kx=0.0, polarization=Polarization.TE
+            ),
+            z,
+        )
+
+        for i, wl in enumerate(wl_list):
+            single = stratix.compute_field_profile(
+                stratix.solve(stack, wl, kx=0.0, polarization=Polarization.TE), z
+            )
+            for j in range(len(z)):
+                assert abs(swept["E"][i][j] - single["E"][j]) < 1e-10
+                scale = abs(single["H"][j])
+                assert abs(swept["H"][i][j] - single["H"][j]) < 1e-10 * max(
+                    1.0, float(scale)
+                )
+
+    def test_two_dimensional_sweep_shape(self, set_backend):
+        stack = _sweep_stack()
+        wavelengths = nd.array([4e-7, 5e-7, 6e-7])
+        kx = nd.array([0.0, 1e6])
+        result = stratix.solve(
+            stack, wavelengths, kx=kx, polarization=Polarization.TE
+        )
+
+        z = nd.array([-100e-9, 50e-9, 300e-9])
+        field = stratix.compute_field_profile(result, z)
+
+        assert field["E"].shape == (3, 2, 3)
+        assert field["H"].shape == (3, 2, 3)
+
+    def test_sweep_continuity_at_interfaces(self, set_backend):
+        stack = _sweep_stack()
+        wavelengths = nd.array([4e-7, 6e-7])
+        result = stratix.solve(
+            stack, wavelengths, kx=0.0, polarization=Polarization.TE
+        )
+
+        d_a = stack.layers[0].thickness
+        d_b = stack.layers[1].thickness
+        eps = 1e-20
+        z = nd.array(
+            [-eps, eps, d_a - eps, d_a + eps, d_a + d_b - eps, d_a + d_b + eps]
+        )
+        field = stratix.compute_field_profile(result, z)
+
+        for i in range(2):
+            for j in (0, 2, 4):
+                assert abs(field["E"][i][j] - field["E"][i][j + 1]) < 1e-8
+                assert abs(field["H"][i][j] - field["H"][i][j + 1]) < 1e-4

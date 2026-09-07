@@ -168,5 +168,6 @@ def solve(
         kx=kx_out,
         polarization=polarization,
         method_used=resolved,
+        intermediates=intermediates,
     )
     return result
