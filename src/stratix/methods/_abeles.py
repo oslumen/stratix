@@ -25,7 +25,7 @@ def _abeles_solve(
     polarization: Polarization,
     thicknesses: nd.ndarray | None = None,
 ) -> tuple[nd.ndarray, nd.ndarray, dict]:
-    _omega, _k0, kzs, _, _, denom_vals = _medium_params(
+    _omega, k0, kzs, _, _, denom_vals = _medium_params(
         stack, wavelength, kx, polarization
     )
     Zs = [kz / denom for kz, denom in zip(kzs, denom_vals, strict=True)]
@@ -66,7 +66,7 @@ def _abeles_solve(
     t_total = nd.array(2) * Z_0 / denom
 
     kz0, denom0 = kzs[0], denom_vals[0]
-    R = _safe_R(r_total, kz0, denom0)
-    T = _safe_T(t_total, kz0, denom0, kzs[-1], denom_vals[-1])
+    R = _safe_R(r_total, kz0, denom0, k0)
+    T = _safe_T(t_total, kz0, denom0, kzs[-1], denom_vals[-1], k0)
 
     return R, T, {"thicknesses": _d}

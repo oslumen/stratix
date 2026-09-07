@@ -24,6 +24,7 @@ from stratix.methods._util import _interface_coeffs
 #: per-medium or whole-stack quantity the solve computed anyway; nothing
 #: is accumulated per layer.
 LEAN_INTERMEDIATE_KEYS = {
+    "k0",
     "kzs",
     "denom_vals",
     "r_total",

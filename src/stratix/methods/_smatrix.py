@@ -8,6 +8,7 @@ from phokaia import Stack
 
 from ._medium_params import _medium_params
 from ._util import _interface_coeffs
+from ._util import _rel_tol
 from ._util import _resolve_thicknesses
 from ._util import _safe_R
 from ._util import _safe_T
@@ -34,8 +35,14 @@ def _redheffer_star(S_A: _Components, S_B: _Components) -> _Components:
     A11, A12, A21, A22 = S_A
     B11, B12, B21, B22 = S_B
 
-    denom = 1.0 - A22 * B11
-    safe_denom = nd.where(denom == 0, nd.ones_like(denom), denom)
+    product = A22 * B11
+    denom = 1.0 - product
+    # ``1 - x`` cancels, so its trustworthy scale is ``1 + |x|``.  Below
+    # sqrt(eps) of that the difference is rounding noise rather than a
+    # denominator, and dividing by it manufactures arbitrarily large
+    # components out of nothing.
+    degenerate = nd.abs(denom) <= _rel_tol() * (1.0 + nd.abs(product))
+    safe_denom = nd.where(degenerate, nd.ones_like(denom), denom)
     S11 = A11 + A12 * B11 * A21 / safe_denom
     S12 = A12 * B12 / safe_denom
     S21 = B21 * A21 / safe_denom
@@ -100,7 +107,7 @@ def _smatrix_solve(
         interface coefficients from these on demand, so no per-layer
         matrix is retained by a solve that was not asked for one.
     """
-    _omega, _k0, kzs, _, _, denom_vals = _medium_params(
+    _omega, k0, kzs, _, _, denom_vals = _medium_params(
         stack, wavelength, kx, polarization
     )
     Zs = [kz / denom for kz, denom in zip(kzs, denom_vals, strict=True)]
@@ -120,10 +127,11 @@ def _smatrix_solve(
     r_total = S_total[0]
     t_total = S_total[2]
 
-    R = _safe_R(r_total, kz0, denom0)
-    T = _safe_T(t_total, kz0, denom0, kzs[-1], denom_vals[-1])
+    R = _safe_R(r_total, kz0, denom0, k0)
+    T = _safe_T(t_total, kz0, denom0, kzs[-1], denom_vals[-1], k0)
 
     intermediates = {
+        "k0": k0,
         "kzs": kzs,
         "denom_vals": denom_vals,
         "r_total": r_total,
