@@ -4,6 +4,19 @@ The Abélès formalism assembles a 2x2 characteristic matrix per layer,
 multiplies them, and extracts R/T from the total matrix. Equivalent
 to S-matrix for all-dielectric stacks, but can become numerically
 unstable for thick, metallic, or evanescent layers.
+
+Each layer's matrix maps the tangential fields at its *bottom* face to
+the ones at its *top* face — ``(E, H)_top = L @ (E, H)_bottom`` — under
+the ``exp(-i omega t)`` convention of ADR 0005, in which the wave
+travelling into the stack (+z, downward) carries ``exp(+i kz z)``.  That
+direction is the whole content of the off-diagonal signs::
+
+    L = [[cos(phi), -i sin(phi)/Y], [-i Y sin(phi), cos(phi)]]
+
+Mapping the other way (top to bottom) is the same matrix with ``+i``, and
+mixing the two is invisible on a lossless stack — it conjugates ``r`` and
+``t`` and leaves R and T untouched — but turns absorption into gain the
+moment ``phi`` is complex (issue #59).
 """
 
 from __future__ import annotations
@@ -48,8 +61,8 @@ def _abeles_solve(
         sin_phi = nd.sin(phi)
 
         L11 = cos_phi
-        L12 = 1j * sin_phi / Z
-        L21 = 1j * Z * sin_phi
+        L12 = -1j * sin_phi / Z
+        L21 = -1j * Z * sin_phi
         L22 = cos_phi
 
         n11 = m11 * L11 + m12 * L21
