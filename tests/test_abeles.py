@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numdiff as nd
+import pytest
 from phokaia import Layer
 from phokaia import Material
 from phokaia import Polarization
@@ -14,16 +15,12 @@ from stratix._types import Method
 
 def _smatrix_ref(stack, wavelength, kx, polarization):
     """Reference S-matrix solve for comparison."""
-    return stratix.solve(
-        stack, wavelength, kx, polarization, method=Method.SMATRIX
-    )
+    return stratix.solve(stack, wavelength, kx, polarization, method=Method.SMATRIX)
 
 
 def _abeles_solve(stack, wavelength, kx, polarization):
     """Abélès method solve."""
-    return stratix.solve(
-        stack, wavelength, kx, polarization, method=Method.ABELES
-    )
+    return stratix.solve(stack, wavelength, kx, polarization, method=Method.ABELES)
 
 
 class TestAbelesSingleInterface:
@@ -85,8 +82,12 @@ class TestAbelesSingleInterface:
         wavelength = 5e-7
         k0 = 2 * nd.pi / wavelength
         kx = 1.1 * n_air * k0
-        ref = _smatrix_ref(stack, wavelength, kx=float(kx), polarization=Polarization.TE)
-        res = _abeles_solve(stack, wavelength, kx=float(kx), polarization=Polarization.TE)
+        ref = _smatrix_ref(
+            stack, wavelength, kx=float(kx), polarization=Polarization.TE
+        )
+        res = _abeles_solve(
+            stack, wavelength, kx=float(kx), polarization=Polarization.TE
+        )
 
         assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12
         assert abs(float(res.T[0, 0]) - float(ref.T[0, 0])) < 1e-12
@@ -235,3 +236,41 @@ class TestAbelesMultiLayer:
 
         assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12
         assert abs(float(res.T[0, 0]) - float(ref.T[0, 0])) < 1e-12
+
+
+class TestAbelesThickAbsorberEnvelope:
+    """Where the characteristic matrix stays usable on a thick absorber.
+
+    Abélès carries ``cos(phi)`` and ``sin(phi)``, which overflow once
+    ``Im(phi)`` exceeds ~710 — about 16 um of this metal at 500 nm.  That
+    is the transfer-matrix blow-up ADR 0001 attributes to the family and
+    the reason ``Method.AUTO`` resolves to ``SMATRIX``; past it the
+    method returns non-finite values (nan at 20 um) rather than a wrong
+    number.  Up to that point it tracks the S-matrix all the way into
+    the underflow regime, and this pins the measured envelope instead of
+    assuming it (issue #60, notes).
+    """
+
+    _METAL = (0.05 + 3.5j) ** 2
+
+    def _stack(self, thickness):
+        return Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+            layers=[Layer(thickness=thickness, material=Material(epsilon=self._METAL))],
+        )
+
+    @pytest.mark.parametrize("pol", [Polarization.TE, Polarization.TM])
+    @pytest.mark.parametrize("thickness", [1e-6, 5e-6, 8e-6, 12e-6])
+    def test_tracks_smatrix_up_to_the_overflow_threshold(
+        self, set_backend, pol, thickness
+    ):
+        wavelength = 5e-7
+        stack = self._stack(thickness)
+        ref = _smatrix_ref(stack, wavelength, kx=0.0, polarization=pol)
+        res = _abeles_solve(stack, wavelength, kx=0.0, polarization=pol)
+
+        assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12
+        assert float(res.T[0, 0]) == pytest.approx(
+            float(ref.T[0, 0]), rel=1e-10, abs=0.0
+        )
