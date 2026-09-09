@@ -110,11 +110,11 @@ def _admittance_step(
 
         Y' = Y_layer * (Y + i*Y_layer*tan(phi)) / (Y_layer + i*Y*tan(phi))
 
-    The admittance recursion applies it twice per layer and in opposite
-    directions -- once walking up from the substrate to find the input
-    admittance, once walking back down to accumulate the transmitted
-    amplitude.  The two differ only in the sign of the phase, so passing
-    ``-phi`` covers the upward pass and no second body is needed.
+    The admittance recursion applies it once per layer, walking up from
+    the substrate to find the input admittance; ``-phi`` runs the map
+    against the propagation direction.  (The downward pass that recovers
+    the transmitted amplitude no longer steps admittances at all — it
+    reuses the ones this pass saw; see ``_admittance_solve``.)
 
     Parameters
     ----------

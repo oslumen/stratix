@@ -4,8 +4,11 @@ The optical admittance ``Y = H_tangential / E_tangential`` at an interface
 is propagated through the stack from substrate to superstrate by the
 Moebius map in :func:`~stratix.methods._util._admittance_step`.  Reflection
 comes from the effective input admittance at the first interface, and the
-transmitted amplitude from a second pass back down the stack -- the same
-map run the other way, which is why both passes call one helper.
+transmitted amplitude from a second pass back down the stack, which reuses
+the admittances the upward pass saw at each layer's bottom face and
+multiplies the field by each layer's face-to-face ratio, written on
+``p = exp(i phi)`` so an absorbing layer attenuates instead of overflowing
+(issue #60).
 """
 
 from __future__ import annotations
@@ -62,23 +65,35 @@ def _admittance_solve(
     # Upward pass: start from the substrate, which holds a single outgoing
     # wave and so presents its own wave admittance, and carry it up to the
     # first interface.  ``-phi`` runs the map against the propagation
-    # direction.
+    # direction.  The admittance seen at each layer's *bottom* face is
+    # kept: the downward pass needs it to know how much backward wave the
+    # layer holds.
+    Y_below = [nd.array(0j)] * len(phis)
     Y_in = admittances[-1]
     for i in reversed(range(len(phis))):
+        Y_below[i] = Y_in
         Y_in = _admittance_step(Y_in, admittances[i + 1], -phis[i])
 
     r_total = (Y_super - Y_in) / (Y_super + Y_in)
 
     # Downward pass: the input admittance fixes the field at the first
-    # interface, and each layer multiplies it by the factor its own
-    # admittance transform implies.  What is left at the substrate is the
-    # transmitted amplitude.
+    # interface, and each layer multiplies it by the ratio of its two
+    # face fields.  What is left at the substrate is the transmitted
+    # amplitude.  The ratio is carried on ``p = exp(i phi)`` rather than
+    # on ``cos``/``sin``: an absorbing layer has ``Im(phi) > 0``, where
+    # both trig functions grow like ``exp(Im phi)/2`` and the growing
+    # exponential survives the sum instead of cancelling, so T diverged
+    # with thickness (issue #60).  The physical branch of ``kz`` puts
+    # ``Im(phi) >= 0``, so ``|p| <= 1`` and nothing here can grow — the
+    # same substitution the S-matrix layer loop and the DtN assembly
+    # make.  ``rho`` is the reflection the layer sees looking down from
+    # its bottom face, read off the retained admittance.
     field = nd.array(1.0) + r_total
-    Y_here = Y_in
     for i, phi in enumerate(phis):
         Y_layer = admittances[i + 1]
-        field = field * (nd.cos(phi) + 1j * Y_here / Y_layer * nd.sin(phi))
-        Y_here = _admittance_step(Y_here, Y_layer, phi)
+        p = nd.exp(1j * phi)
+        rho = (Y_layer - Y_below[i]) / (Y_layer + Y_below[i])
+        field = field * p * (1.0 + rho) / (1.0 + rho * p * p)
 
     R = _safe_R(r_total, no_flux)
     T = _safe_T(field, kzs[0], denom_vals[0], kzs[-1], denom_vals[-1], no_flux)

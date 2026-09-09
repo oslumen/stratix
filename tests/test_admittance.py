@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numdiff as nd
+import pytest
 from phokaia import Layer
 from phokaia import Material
 from phokaia import Polarization
@@ -233,3 +234,67 @@ class TestAdmittanceMultiLayer:
 
         assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12
         assert abs(float(res.T[0, 0]) - float(ref.T[0, 0])) < 1e-12
+
+
+class TestAdmittanceThickAbsorber:
+    """The downward pass must not amplify through an absorber — Issue #60.
+
+    The transmitted amplitude used to accumulate ``cos(phi)`` and
+    ``sin(phi)`` per layer, both of which grow like ``exp(Im phi)`` for an
+    absorbing layer.  The growing exponential was retained instead of
+    cancelling, so T diverged with thickness — 4e158 at 5 um of metal —
+    where the physics decays to zero.
+    """
+
+    _METAL = (0.05 + 3.5j) ** 2
+
+    def _stack(self, thickness):
+        return Stack(
+            superstrate=Material(epsilon=1.0),
+            substrate=Material(epsilon=2.25),
+            layers=[Layer(thickness=thickness, material=Material(epsilon=self._METAL))],
+        )
+
+    @pytest.mark.parametrize("pol", [Polarization.TE, Polarization.TM])
+    def test_T_matches_smatrix_and_decays(self, set_backend, pol):
+        wavelength = 5e-7
+        previous = None
+        for thickness in (1e-6, 2e-6, 5e-6):
+            stack = self._stack(thickness)
+            ref = _smatrix_ref(stack, wavelength, kx=0.0, polarization=pol)
+            res = _admittance_solve(stack, wavelength, kx=0.0, polarization=pol)
+
+            T_ref, T_adm = float(ref.T[0, 0]), float(res.T[0, 0])
+            assert T_adm == pytest.approx(T_ref, rel=1e-10), (
+                f"d={thickness}: T={T_adm} vs smatrix {T_ref}"
+            )
+            assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12
+
+            if previous is not None:
+                assert T_adm < previous, f"T not decreasing at d={thickness}"
+            previous = T_adm
+
+    @pytest.mark.parametrize("pol", [Polarization.TE, Polarization.TM])
+    def test_far_past_the_naive_overflow_threshold(self, set_backend, pol):
+        """20 um of metal: cos/sin overflow outright, exp(i*phi) cannot."""
+        import math
+
+        wavelength = 5e-7
+        res = _admittance_solve(
+            self._stack(20e-6), wavelength, kx=0.0, polarization=pol
+        )
+        T = float(res.T[0, 0])
+        assert math.isfinite(T)
+        assert 0.0 <= T <= 1e-300
+
+        res_abs = stratix.solve(
+            self._stack(20e-6),
+            wavelength,
+            0.0,
+            pol,
+            method=Method.ADMITTANCE,
+            absorption=True,
+        )
+        balance = float(res_abs.energy_balance[0, 0])
+        assert math.isfinite(balance)
+        assert balance == pytest.approx(1.0, abs=1e-9)
