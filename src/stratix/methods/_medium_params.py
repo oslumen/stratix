@@ -165,10 +165,10 @@ def _medium_params(
     mus : List of 0-D ndarrays — mu(omega) per medium.
     denom_vals : List of 0-D ndarrays — mus for TE, epsilons for TM.
     no_flux : Boolean ndarray — where the incident wave carries no
-        z-directed flux.  Computed here rather than in each solver
-        because this is the one place that holds the incident medium's
-        ``epsilon`` and ``mu`` alongside ``kx``, and every method needs
-        the same mask.
+        z-directed flux.  Computed here, from the same ``kzs[0]`` the
+        flux denominator uses, because every method needs the same mask
+        and deriving it from any other expression re-opens the ulp-wide
+        disagreement band of issue #58.
 
     Raises
     ------
@@ -199,6 +199,6 @@ def _medium_params(
     else:
         raise NotImplementedError(f"Polarization {polarization!r} not supported")
 
-    no_flux = _no_incident_flux(kx, epsilons[0], mus[0], k0)
+    no_flux = _no_incident_flux(kzs[0])
 
     return omega, k0, kzs, epsilons, mus, denom_vals, no_flux

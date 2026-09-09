@@ -130,66 +130,62 @@ def _admittance_step(
     return Y_layer * (Y_outer + 1j * Y_layer * t) / (Y_layer + 1j * Y_outer * t)
 
 
-def _no_incident_flux(
-    kx: nd.ndarray, epsilon0: nd.ndarray, mu0: nd.ndarray, k0: nd.ndarray
-) -> nd.ndarray:
+def _no_incident_flux(kz0: nd.ndarray) -> nd.ndarray:
     """Boolean mask: the incident wave carries no z-directed flux.
 
     Both R and T divide by the incident flux ``Re(kz0/denom0)``, so the
     regime where that flux vanishes has to be identified before the
-    division rather than repaired after it.  The criterion is the
-    superstrate's own light line::
+    division rather than repaired after it.  The criterion is ``kz0``'s
+    own real part::
 
-        |kx| >= Re(n_super) * k0,   n_super = sqrt(epsilon0 * mu0)
+        Re(kz0) <= 0
 
-    which is where ``kz0**2 = epsilon0*mu0*k0**2 - kx**2`` stops being
-    positive.  Inside the light cone ``kz0`` is real and the wave
-    propagates; on the line it is exactly zero (grazing incidence); past
-    it ``kz0`` is imaginary and the wave is evanescent.  Taking ``>=``
-    rather than ``>`` folds exact grazing in with the evanescent side,
-    which is where it belongs: no power crosses the first interface
-    either way.
-
-    The comparison is between two computed wavevectors, so it says the
-    same thing at every working precision — unlike a tolerance on the
-    residual flux, which decides the same physical input differently in
-    single and double precision (issue #57).  Only the ulp of representing
-    ``kx`` itself is left, against the multi-decade band the tolerance had.
-
-    The formula assumes ``epsilon0 * mu0`` is real: ``Re(sqrt(eps*mu))``
-    is not the light line otherwise, since a complex ``eps*mu`` has no
-    sharp propagating/evanescent boundary to find.
+    ``kz0`` is exactly the wavevector the flux denominator is built from,
+    which is the point (issue #58): the superstrate light line
+    ``|kx| >= Re(n_super)*k0`` says the same thing physically, but as a
+    *different* floating-point expression it disagrees with the
+    denominator over a band a couple of ulp wide, and every kx in that
+    band passed the guard and then divided by exactly zero.  With a
+    lossless superstrate — which
     :func:`~stratix.methods._medium_params._reject_lossy_superstrate`
-    normally rules that out — R and T do not partition energy there — but
-    it cannot read a tracer, so a lossy superstrate can still reach this
-    function inside a dispersive ``nd.jit`` trace.  The mask is then
-    approximate rather than wrong-by-construction, which is the best that
-    is available without a concrete value to branch on.
+    enforces — ``denom0`` is real and non-zero, so ``Re(kz0/denom0)`` is
+    zero precisely where ``Re(kz0)`` is, and mask and denominator cannot
+    disagree.
 
-    A metallic superstrate (``epsilon0 * mu0 < 0``) has ``Re(n_super) =
-    0``, so the mask covers every kx including normal incidence — correct,
-    since nothing propagates in it.  A negative-index superstrate
-    (``epsilon0 < 0`` *and* ``mu0 < 0``) has a real index and is not
-    masked, even though ``Re(kz0/denom0)`` comes out large and negative
-    there: that sign is a branch-choice problem in ``_kz_single``, and
-    reporting it as ``R = 1, T = 0`` — a plausible-looking answer for an
-    ordinary propagating wave — would bury it.
+    Inside the light cone ``kz0`` is real and positive (the physical
+    branch of :func:`~stratix.methods._medium_params._kz_single`) and the
+    wave propagates.  On the line it is exactly zero (grazing incidence);
+    past it, purely imaginary (evanescent) — ``nd.sqrt`` of a negative
+    real gives an exactly-zero real part, so both land on the masked side.
+    The comparison is between computed quantities, not a tolerance, so it
+    says the same thing at every working precision — the property issue
+    #57 was opened to get.
 
-    ``|kx|`` because ``kz0`` depends on ``kx**2``: the guard has to be
-    symmetric in the in-plane direction, as the physics is.
+    A metallic superstrate (``epsilon0 * mu0 < 0``) has a purely
+    imaginary ``kz0`` at every kx including normal incidence, so the mask
+    covers all of it — correct, since nothing propagates in it.  A
+    negative-index superstrate (``epsilon0 < 0`` *and* ``mu0 < 0``) has a
+    real positive ``kz0`` and is not masked, even though ``Re(kz0/denom0)``
+    comes out large and negative there: that sign is a branch-choice
+    problem in ``_kz_single``, and reporting it as ``R = 1, T = 0`` — a
+    plausible-looking answer for an ordinary propagating wave — would
+    bury it.
+
+    A lossy superstrate reaching this function inside a ``nd.jit`` trace
+    (the rejection cannot read a tracer) has a fully complex ``kz0``; the
+    mask is then approximate rather than wrong-by-construction, which is
+    the best that is available without a concrete value to branch on.
 
     Parameters
     ----------
-    kx : In-plane wavevector component.
-    epsilon0, mu0 : Permittivity and permeability of the incident medium.
-    k0 : Vacuum wavevector.
+    kz0 : Out-of-plane wavevector in the incident medium, on the physical
+        branch (``Im >= 0``, and ``Re >= 0`` when ``Im = 0``).
 
     Returns
     -------
     Boolean ndarray broadcasting with the sweep shape.
     """
-    n_super = nd.sqrt(epsilon0 * mu0 + 0j)
-    return nd.abs(kx) >= nd.real(n_super) * nd.abs(k0)
+    return nd.real(kz0) <= 0
 
 
 def _safe_R(r_coeff: nd.ndarray, no_flux: nd.ndarray) -> nd.ndarray:

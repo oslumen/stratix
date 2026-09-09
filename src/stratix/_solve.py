@@ -252,11 +252,14 @@ def solve(
 
     Notes
     -----
-    Incidence past the superstrate's light line — ``|kx| >= Re(n_super)·k0``,
-    which includes exact grazing — carries no power into the stack, so
-    ``R = 1``, ``T = 0`` and every layer absorbs nothing.  The cut-off is a
-    comparison of wavevectors, so it falls at the same physical place in
-    single and double precision.
+    Incidence past the superstrate's light line — where the incident
+    ``kz0`` stops having a positive real part, which includes exact
+    grazing — carries no power into the stack, so ``R = 1``, ``T = 0``
+    and every layer absorbs nothing.  The cut-off is read off the same
+    ``kz0`` the flux formulas divide by, so mask and denominator cannot
+    disagree, and it is a comparison of computed quantities rather than a
+    tolerance, so it falls at the same physical place in single and
+    double precision.
 
     Shapes
     ------

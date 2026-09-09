@@ -208,22 +208,32 @@ class TestRejectionIsDtypeIndependent:
         assert fired[0] == (False, False, False, True, True, True)
 
 
+def _guard_fires(eps, mu, kx_factor):
+    """Evaluate the no-flux guard the way ``_medium_params`` builds it.
+
+    The mask keys on the incident ``kz0`` — the same wavevector the flux
+    denominator divides by (issue #58) — so the tests route through
+    ``_kz_single`` exactly as the solver does.
+    """
+    from stratix.methods._medium_params import _kz_single
+    from stratix.methods._util import _no_incident_flux
+
+    k0 = nd.array(2 * nd.pi / _WL)
+    kx = nd.array(kx_factor) * k0
+    return bool(_no_incident_flux(_kz_single(nd.array(eps), nd.array(mu), k0, kx)))
+
+
 class TestLightLineCriterion:
-    """The guard keys on ``kx >= Re(n_super) * k0`` and nothing else."""
+    """The guard keys on the sign of ``Re(kz0)`` and nothing else."""
 
     def test_propagating_evanescent_and_exact_grazing(self, set_backend):
-        from stratix.methods._util import _no_incident_flux
-
-        k0 = nd.array(2 * nd.pi / _WL)
-        eps = nd.array(2.25)
-        mu = nd.array(1.0)
-
         # Inside the light cone: flux enters.
-        assert not bool(_no_incident_flux(nd.array(1.4) * k0, eps, mu, k0))
-        # Exactly on the light line: kz0 = 0, so nothing enters.
-        assert bool(_no_incident_flux(nd.array(1.5) * k0, eps, mu, k0))
+        assert not _guard_fires(2.25, 1.0, 1.4)
+        # Exactly on the light line (n = 1, kx = k0: the cancellation in
+        # kz0**2 is exact there): kz0 = 0, so nothing enters.
+        assert _guard_fires(1.0, 1.0, 1.0)
         # Past it: evanescent.
-        assert bool(_no_incident_flux(nd.array(1.8) * k0, eps, mu, k0))
+        assert _guard_fires(2.25, 1.0, 1.8)
 
     def test_a_tiny_but_real_kz_still_carries_flux(self, set_backend):
         """The criterion is the light line, not a float-precision tolerance.
@@ -234,53 +244,30 @@ class TestLightLineCriterion:
         called it evanescent.  Whether it does depends on the working
         precision, which is exactly what issue #57 is about.
         """
-        from stratix.methods._util import _no_incident_flux
-
-        k0 = nd.array(2 * nd.pi / _WL)
-        eps = nd.array(2.25)
-        mu = nd.array(1.0)
-
         for precision in ("single", "double"):
             with _precision(precision):
-                assert not bool(
-                    _no_incident_flux(nd.array(1.5 * 0.9999) * k0, eps, mu, k0)
-                )
+                assert not _guard_fires(2.25, 1.0, 1.5 * 0.9999)
 
     def test_a_metallic_superstrate_never_carries_flux(self, set_backend):
-        """``eps*mu < 0`` puts ``Re(n)`` at zero: evanescent at every kx."""
-        from stratix.methods._util import _no_incident_flux
-
-        k0 = nd.array(2 * nd.pi / _WL)
-        eps = nd.array(-2.25)
-        mu = nd.array(1.0)
-
-        assert bool(_no_incident_flux(nd.array(0.0), eps, mu, k0))
-        assert bool(_no_incident_flux(nd.array(1.0) * k0, eps, mu, k0))
+        """``eps*mu < 0`` makes ``kz0`` imaginary: evanescent at every kx."""
+        assert _guard_fires(-2.25, 1.0, 0.0)
+        assert _guard_fires(-2.25, 1.0, 1.0)
 
     def test_a_negative_index_superstrate_still_carries_flux(self, set_backend):
-        """``eps < 0`` and ``mu < 0`` give a real index: the wave propagates.
+        """``eps < 0`` and ``mu < 0`` give a real ``kz0``: the wave propagates.
 
         ``Re(kz0/denom0)`` is large and *negative* here, which is a
         separate branch-choice problem in ``_kz_single``.  Reporting it as
         no flux would answer ``R = 1, T = 0`` and bury it.
         """
-        from stratix.methods._util import _no_incident_flux
-
-        k0 = nd.array(2 * nd.pi / _WL)
-        assert not bool(
-            _no_incident_flux(nd.array(0.0), nd.array(-2.25), nd.array(-1.0), k0)
-        )
+        assert not _guard_fires(-2.25, -1.0, 0.0)
 
     def test_the_sign_of_kx_does_not_matter(self, set_backend):
         """kz0 depends on kx**2, so the guard has to be symmetric in kx."""
-        from stratix.methods._util import _no_incident_flux
-
-        k0 = nd.array(2 * nd.pi / _WL)
-        eps, mu = nd.array(2.25), nd.array(1.0)
         for magnitude in (1.4, 1.8):
-            assert bool(
-                _no_incident_flux(nd.array(magnitude) * k0, eps, mu, k0)
-            ) == bool(_no_incident_flux(nd.array(-magnitude) * k0, eps, mu, k0))
+            assert _guard_fires(2.25, 1.0, magnitude) == _guard_fires(
+                2.25, 1.0, -magnitude
+            )
 
 
 class TestLossySubstrateIsUntouched:

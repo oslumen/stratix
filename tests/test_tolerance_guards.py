@@ -319,6 +319,72 @@ class TestAllMethodsShareTheGuard:
         assert float(result.T[0, -1]) == pytest.approx(0.0, abs=1e-9)
 
 
+class TestGuardMatchesFluxDenominator:
+    """The no-flux mask tests the quantity the division uses — Issue #58.
+
+    The superstrate light line ``|kx| >= Re(n_super)*k0`` and the flux
+    denominator ``Re(kz0/denom0)`` are two floating-point expressions for
+    the same physical boundary, and they disagree in the last couple of
+    ulp.  A kx inside that band passed the wavevector-comparison guard and
+    then divided a non-zero numerator by exactly zero, returning ``inf``
+    for T and every absorption term.  The mask must therefore be derived
+    from ``kz0`` itself, so mask and denominator cannot disagree — while
+    staying a comparison of computed quantities, not a tolerance, so the
+    cut-off still does not move with the working precision (issue #57).
+    """
+
+    #: The superstrate epsilon from the issue #58 report: its light line
+    #: and the corresponding ``kz0`` disagree about a two-ulp band of kx.
+    _EPS0 = 1.4030269036655723
+
+    def _stack(self):
+        return Stack(
+            superstrate=Material(epsilon=self._EPS0),
+            substrate=Material(epsilon=2.25),
+            layers=[Layer(thickness=100e-9, material=Material(epsilon=4.0 + 0.1j))],
+        )
+
+    @pytest.mark.parametrize("pol", [Polarization.TE, Polarization.TM])
+    def test_ulp_sweep_across_the_light_line(self, set_backend, pol):
+        k0 = 2 * math.pi / _WL
+        light = math.sqrt(self._EPS0) * k0
+
+        kxs = [light]
+        lo = hi = light
+        for _ in range(3):
+            lo = math.nextafter(lo, 0.0)
+            hi = math.nextafter(hi, math.inf)
+            kxs.extend([lo, hi])
+        kxs.sort()
+
+        result = stratix.solve(
+            self._stack(), _WL, kx=nd.array(kxs), polarization=pol, absorption=True
+        )
+
+        for j, kx in enumerate(kxs):
+            where = f"kx={kx!r} ({pol.name})"
+            _assert_bounded(result.R[0, j], result.T[0, j], where)
+            balance = float(result.energy_balance[0, j])
+            assert math.isfinite(balance), f"energy balance not finite at {where}"
+            assert balance == pytest.approx(1.0, abs=1e-9), where
+            absorbed = float(result.layer_absorption[0, 0, j])
+            assert math.isfinite(absorbed), f"absorption not finite at {where}"
+
+    @pytest.mark.parametrize("pol", [Polarization.TE, Polarization.TM])
+    def test_the_reported_kx_carries_no_flux(self, set_backend, pol):
+        """The kx from the report: two ulp inside the light line, kz0 imaginary."""
+        stack = Stack(
+            superstrate=Material(epsilon=self._EPS0),
+            substrate=Material(epsilon=2.25),
+        )
+        result = stratix.solve(
+            stack, _WL, 14884795.196852127, polarization=pol, absorption=True
+        )
+        assert float(result.R[0, 0]) == pytest.approx(1.0, abs=1e-12)
+        assert float(result.T[0, 0]) == pytest.approx(0.0, abs=1e-12)
+        assert float(result.energy_balance[0, 0]) == pytest.approx(1.0, abs=1e-12)
+
+
 class TestGuardFiresOnlyOnCollapsedFlux:
     """The guard keys on the light line, never on the sign of the flux.
 
@@ -363,20 +429,23 @@ class TestGuardFiresOnlyOnCollapsedFlux:
             stratix.solve(stack, _WL, kx=0.0, polarization=Polarization.TE)
 
     def test_guard_fires_past_the_light_line_and_not_inside_it(self, set_backend):
+        from stratix.methods._medium_params import _kz_single
         from stratix.methods._util import _no_incident_flux
 
         k0 = nd.array(2 * nd.pi / _WL)
         eps, mu = nd.array(2.25), nd.array(1.0)  # n = 1.5
 
+        def fires(eps, mu, kx):
+            return bool(_no_incident_flux(_kz_single(eps, mu, k0, kx)))
+
         # Inside the light cone: an ordinary propagating wave.
-        assert not bool(_no_incident_flux(nd.array(0.0), eps, mu, k0))
-        assert not bool(_no_incident_flux(nd.array(1.4) * k0, eps, mu, k0))
-        # On it: kz0 = 0, grazing incidence, nothing enters.
-        assert bool(_no_incident_flux(nd.array(1.5) * k0, eps, mu, k0))
+        assert not fires(eps, mu, nd.array(0.0))
+        assert not fires(eps, mu, nd.array(1.4) * k0)
+        # On it (kx = n*k0 with n = 1: the subtraction in kz0**2 is exact
+        # there): kz0 = 0, grazing incidence, nothing enters.
+        assert fires(nd.array(1.0), mu, nd.array(1.0) * k0)
         # Past it: evanescent.
-        assert bool(_no_incident_flux(nd.array(1.6) * k0, eps, mu, k0))
-        # A negative-index superstrate has a real index, so the light line
+        assert fires(eps, mu, nd.array(1.6) * k0)
+        # A negative-index superstrate has a real kz0, so the light line
         # is where it always was and normal incidence propagates.
-        assert not bool(
-            _no_incident_flux(nd.array(0.0), nd.array(-2.25), nd.array(-1.0), k0)
-        )
+        assert not fires(nd.array(-2.25), nd.array(-1.0), nd.array(0.0))
