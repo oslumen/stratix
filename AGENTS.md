@@ -3,7 +3,7 @@
 
 ## Python
 
-Use uv and the virtualenv at the root of the repository. Install the full version `uv pip install -e .[all-gpu]` to have torch and jax. 
+Use uv and the virtualenv at the root of the repository. Install the full version `uv pip install -e .[all-gpu]` to have torch and jax.
 
 Use tdd skill, atomic commits when finished and close related issue when done if needed.
 
@@ -31,5 +31,5 @@ Single-context: one `CONTEXT.md` + `docs/adr/` at repo root. See `docs/agents/do
 
 - Time convention: `exp(-iωt)` (documented, not enforced).
 - Layer ordering: superstrate → substrate (top-to-bottom).
-- All public types are Pydantic models.
+- Domain types (`Material`, `Layer`, `Stack` from phokaia) are Pydantic models; stratix's `Result` is a NamedTuple.
 - Tests run across all available numdiff backends. Autodiff tests skip numpy backend (no grad support).

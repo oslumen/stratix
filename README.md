@@ -24,7 +24,7 @@ uv pip install stratix
 - **Per-layer absorption** — Optical absorption per layer with energy balance R+T+ΣA ≈ 1.
 - **Field profiles** — Compute E(z) and H(z) through the stack with `compute_field_profile()`.
 - **Convenience APIs** — `solve_angles()` for angle input and `solve_from_source()` for `phokaia.PlaneWave` sources.
-- **Structured logging** — Configurable loguru-based logger with per-module verbosity control via `set_log_level()`.
+- **Structured logging** — loguru-based logger scoped to the package: silent by default, opt in via `set_log_level()`; importing stratix never touches the host application's logging configuration.
 - **Validated** — Tests against analytic Fresnel formulas, cross-method agreement, and the `tmm` reference library.
 
 ## Quick start

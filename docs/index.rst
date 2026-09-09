@@ -26,9 +26,9 @@
 
    .. grid-item-card:: Structured logging
 
-      Hierarchical logging with per-module verbosity control.
-      Debug, info, warning, error, and critical levels
-      with colorised output.
+      Package-scoped loguru logging, silent by default.
+      Opt in with ``set_log_level()`` — importing stratix
+      never touches the host application's handlers.
 
    .. grid-item-card:: Modular design
 

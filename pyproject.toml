@@ -59,7 +59,8 @@ docs = [
 where = ["src"]
 
 [tool.setuptools_scm]
-write_to = "src/stratix/_version.py"
+# No write_to: the version has one source of truth, the installed
+# distribution metadata read by importlib.metadata in the package init.
 fallback_version = "0.1.0"
 
 [tool.ruff]

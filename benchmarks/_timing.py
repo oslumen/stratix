@@ -11,6 +11,7 @@ import numdiff as nd
 from phokaia import Polarization
 from phokaia import Stack
 
+import stratix
 from stratix import Method
 from stratix import solve
 
@@ -69,6 +70,9 @@ def time_solve(
     if solver is not None:
         _solver = solver
     elif jit:
+        # Compiling solve() itself returns a Result whose enum fields JAX
+        # accepts only after the explicit opt-in registration (issue #55).
+        stratix.register_jax_pytrees()
         _solver = nd.jit(solve, static_argnames=STATIC_ARGS)
     else:
         _solver = solve

@@ -478,6 +478,10 @@ class TestTracedSolvesStillRun:
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support jit")
 
+        # Explicit opt-in: compiling solve() itself returns a Result whose
+        # enum fields JAX accepts only once registered (issue #55).
+        stratix.register_jax_pytrees()
+
         stack = _stack(superstrate_eps=1.0)
         wavelengths = nd.linspace(400e-9, 800e-9, 4)
         kx = nd.linspace(0.0, 1e7, 3)

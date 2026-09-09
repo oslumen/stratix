@@ -301,6 +301,10 @@ class TestJit:
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support jit")
 
+        # Compiling solve() itself returns a Result whose enum fields JAX
+        # accepts only after the explicit opt-in registration (issue #55).
+        stratix.register_jax_pytrees()
+
         stack = Stack(
             superstrate=Material(epsilon=1.0),
             substrate=Material(epsilon=2.25),
