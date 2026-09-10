@@ -42,7 +42,7 @@ jobs:
           token: ${{ secrets.OSLUMEN_PACKAGES_TOKEN }}
           path: packages/numdiff
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies (CPU only)
