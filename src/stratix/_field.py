@@ -9,6 +9,7 @@ from ._amplitudes import _medium_amplitudes
 from ._amplitudes import _medium_boundaries
 from ._amplitudes import _medium_index
 from ._amplitudes import _medium_offsets
+from ._result import Result
 
 
 def _profile_from_intermediates(intr: dict, z: nd.ndarray) -> tuple:
@@ -65,7 +66,7 @@ def _profile_from_intermediates(intr: dict, z: nd.ndarray) -> tuple:
     return E_total, H_total
 
 
-def compute_field_profile(result, z_positions) -> dict:
+def compute_field_profile(result: Result, z_positions: nd.ndarray) -> dict:
     """Compute E and H field profiles through the stack at given z positions.
 
     Parameters

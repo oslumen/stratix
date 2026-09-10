@@ -34,9 +34,3 @@ def set_backend(request):
         jax.config.update("jax_enable_x64", True)
     yield backend
     nd.set_backend(old)
-
-
-
-
-
-

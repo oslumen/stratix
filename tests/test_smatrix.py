@@ -657,15 +657,19 @@ class TestThicknessOverride:
             ],
         )
 
-        thicknesses_override = nd.array(
-            [layer.thickness for layer in stack.layers]
-        )
+        thicknesses_override = nd.array([layer.thickness for layer in stack.layers])
 
         for method in [Method.SMATRIX, Method.ABELES, Method.ADMITTANCE, Method.DTN]:
-            orig = stratix.solve(stack, 5e-7, kx=0.0, polarization=Polarization.TE, method=method)
+            orig = stratix.solve(
+                stack, 5e-7, kx=0.0, polarization=Polarization.TE, method=method
+            )
             over = stratix.solve(
-                stack, 5e-7, kx=0.0, polarization=Polarization.TE,
-                method=method, thicknesses=thicknesses_override,
+                stack,
+                5e-7,
+                kx=0.0,
+                polarization=Polarization.TE,
+                method=method,
+                thicknesses=thicknesses_override,
             )
             assert abs(float(orig.R[0, 0]) - float(over.R[0, 0])) < 1e-12, (
                 f"{method.value}: override R differs from original"
@@ -690,12 +694,20 @@ class TestThicknessOverride:
 
         for method in [Method.SMATRIX, Method.ABELES, Method.ADMITTANCE, Method.DTN]:
             orig = stratix.solve(
-                stack, 5e-7, kx=0.0, polarization=Polarization.TE,
-                method=method, thicknesses=thick_orig,
+                stack,
+                5e-7,
+                kx=0.0,
+                polarization=Polarization.TE,
+                method=method,
+                thicknesses=thick_orig,
             )
             mod = stratix.solve(
-                stack, 5e-7, kx=0.0, polarization=Polarization.TE,
-                method=method, thicknesses=thick_mod,
+                stack,
+                5e-7,
+                kx=0.0,
+                polarization=Polarization.TE,
+                method=method,
+                thicknesses=thick_mod,
             )
             assert abs(float(orig.R[0, 0]) - float(mod.R[0, 0])) > 1e-10, (
                 f"{method.value}: R should differ with different thickness"
@@ -711,7 +723,10 @@ class TestThicknessOverride:
 
         with pytest.raises(ValueError, match=r"length.*must match"):
             stratix.solve(
-                stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+                stack,
+                5e-7,
+                kx=0.0,
+                polarization=Polarization.TE,
                 thicknesses=nd.array([100e-9, 200e-9]),
             )
 
@@ -725,7 +740,10 @@ class TestThicknessOverride:
 
         with pytest.raises(TypeError, match="must be a sequence"):
             stratix.solve(
-                stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+                stack,
+                5e-7,
+                kx=0.0,
+                polarization=Polarization.TE,
                 thicknesses=42.0,
             )
 
@@ -737,7 +755,10 @@ class TestThicknessOverride:
         )
 
         result = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
             thicknesses=None,
         )
 
@@ -757,7 +778,10 @@ class TestThicknessOverride:
 
         thicknesses = nd.array([d_override])
         result = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
             thicknesses=thicknesses,
         )
 
@@ -781,8 +805,11 @@ class TestThicknessOverride:
 
         thicknesses = nd.array([d])
         result = stratix.solve_angles(
-            stack, wavelengths=5e-7, angles=0.0,
-            polarization=Polarization.TE, thicknesses=thicknesses,
+            stack,
+            wavelengths=5e-7,
+            angles=0.0,
+            polarization=Polarization.TE,
+            thicknesses=thicknesses,
         )
 
         assert abs(float(result.R[0, 0]) + float(result.T[0, 0]) - 1.0) < 1e-12
@@ -797,8 +824,12 @@ class TestThicknessOverride:
         results = {}
         for method in [Method.SMATRIX, Method.ABELES, Method.ADMITTANCE, Method.DTN]:
             results[method] = stratix.solve(
-                stack, 5e-7, kx=0.0, polarization=Polarization.TE,
-                method=method, thicknesses=None,
+                stack,
+                5e-7,
+                kx=0.0,
+                polarization=Polarization.TE,
+                method=method,
+                thicknesses=None,
             )
 
         ref_R = float(results[Method.SMATRIX].R[0, 0])

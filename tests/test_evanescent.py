@@ -71,7 +71,9 @@ class TestEvanescentIncidence:
         kx = k0 * 2.0
         stack = self._stack()
         result = stratix.solve(stack, wl, kx=kx, polarization=pol, method=method)
-        assert float(result.R[0, 0]) + float(result.T[0, 0]) == pytest.approx(1.0, abs=1e-12)
+        assert float(result.R[0, 0]) + float(result.T[0, 0]) == pytest.approx(
+            1.0, abs=1e-12
+        )
 
     @pytest.mark.parametrize("pol", [Polarization.TE, Polarization.TM])
     def test_no_divide_by_zero_warning(self, set_backend, pol):
@@ -80,12 +82,16 @@ class TestEvanescentIncidence:
         kx = k0 * 2.0
         stack = self._stack()
         import warnings
+
         with warnings.catch_warnings(record=True) as record:
             warnings.simplefilter("always")
             stratix.solve(stack, wl, kx=kx, polarization=pol)
         divide_warnings = [
-            w for w in record
+            w
+            for w in record
             if issubclass(w.category, RuntimeWarning)
             and "divide by zero" in str(w.message).lower()
         ]
-        assert len(divide_warnings) == 0, f"Unexpected divide-by-zero: {divide_warnings}"
+        assert len(divide_warnings) == 0, (
+            f"Unexpected divide-by-zero: {divide_warnings}"
+        )

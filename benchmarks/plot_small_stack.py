@@ -47,11 +47,17 @@ backend_mems: dict[str, float] = {}
 for b in backends:
     with backend_scope(b):
         t = time_solve(
-            stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+            stack,
+            wavelengths,
+            kx=kx_vals,
+            polarization=Polarization.TE,
             method=Method.SMATRIX,
         )
         m = measure_memory(
-            stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+            stack,
+            wavelengths,
+            kx=kx_vals,
+            polarization=Polarization.TE,
             method=Method.SMATRIX,
         )
     backend_times[b] = t["min"]
@@ -113,7 +119,10 @@ for m in METHODS:
     for b in backends:
         with backend_scope(b):
             t = time_solve(
-                stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+                stack,
+                wavelengths,
+                kx=kx_vals,
+                polarization=Polarization.TE,
                 method=m,
             )
         row.append(t["min"])
@@ -146,11 +155,17 @@ jit_backends = [b for b in ("jax", "torch") if b in backends]
 if jit_backends:
     with backend_scope("numpy"):
         _ = solve(
-            stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+            stack,
+            wavelengths,
+            kx=kx_vals,
+            polarization=Polarization.TE,
             method=Method.SMATRIX,
         )
         t_numpy = time_solve(
-            stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+            stack,
+            wavelengths,
+            kx=kx_vals,
+            polarization=Polarization.TE,
             method=Method.SMATRIX,
             jit=False,
         )
@@ -160,16 +175,25 @@ if jit_backends:
     for b in jit_backends:
         with backend_scope(b):
             _ = solve(
-                stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+                stack,
+                wavelengths,
+                kx=kx_vals,
+                polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
             t_eager = time_solve(
-                stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+                stack,
+                wavelengths,
+                kx=kx_vals,
+                polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
 
             t_compiled = time_solve(
-                stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+                stack,
+                wavelengths,
+                kx=kx_vals,
+                polarization=Polarization.TE,
                 method=Method.SMATRIX,
                 jit=True,
             )
@@ -178,7 +202,7 @@ if jit_backends:
         jit_eager[b] = t_eager["min"]
 
     numpy_eager = t_numpy["min"]
-    chart_backends = ["numpy"] + jit_backends
+    chart_backends = ["numpy", *jit_backends]
     bar_chart_compare(
         {
             "numpy (eager)": [numpy_eager] + [0.0] * len(jit_backends),
@@ -203,21 +227,33 @@ if nd.HAS_CUDA:
     for b in gpu_backends:
         with backend_scope(b, gpu=False):
             _ = solve(
-                stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+                stack,
+                wavelengths,
+                kx=kx_vals,
+                polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
             t_cpu = time_solve(
-                stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+                stack,
+                wavelengths,
+                kx=kx_vals,
+                polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
         gpu_cpu[b] = t_cpu["mean"]
         with backend_scope(b, gpu=True):
             _ = solve(
-                stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+                stack,
+                wavelengths,
+                kx=kx_vals,
+                polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
             t_gpu = time_solve(
-                stack, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+                stack,
+                wavelengths,
+                kx=kx_vals,
+                polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
         gpu_gpu[b] = t_gpu["mean"]
@@ -246,8 +282,12 @@ if _tmm_available():
         stack, 500e-9, kx=0.0, polarization=Polarization.TE, method=Method.SMATRIX
     )
 
-    print(f"R — stratix: {cmp['R_stratix']:.8f}  tmm: {cmp['R_tmm']:.8f}  err: {cmp['R_err']:.2e}")
-    print(f"T — stratix: {cmp['T_stratix']:.8f}  tmm: {cmp['T_tmm']:.8f}  err: {cmp['T_err']:.2e}")
+    print(
+        f"R — stratix: {cmp['R_stratix']:.8f}  tmm: {cmp['R_tmm']:.8f}  err: {cmp['R_err']:.2e}"
+    )
+    print(
+        f"T — stratix: {cmp['T_stratix']:.8f}  tmm: {cmp['T_tmm']:.8f}  err: {cmp['T_err']:.2e}"
+    )
 
     if cmp["R_err"] < 1e-10 and cmp["T_err"] < 1e-10:
         print("✓ stratix agrees with tmm within tolerance.")

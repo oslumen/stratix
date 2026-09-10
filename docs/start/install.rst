@@ -45,5 +45,3 @@ Clone the repository and install in editable mode:
     git clone https://github.com/oslumen/stratix
     cd stratix
     uv sync --all-extras
-
-

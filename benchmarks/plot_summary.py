@@ -66,11 +66,17 @@ scaling_scalar: dict[str, float] = {}
 with backend_scope(default_backend):
     for label, s in stacks.items():
         t_sweep = time_solve(
-            s, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+            s,
+            wavelengths,
+            kx=kx_vals,
+            polarization=Polarization.TE,
             method=Method.SMATRIX,
         )
         t_scalar = time_solve(
-            s, scalar_wl, kx=scalar_kx, polarization=Polarization.TE,
+            s,
+            scalar_wl,
+            kx=scalar_kx,
+            polarization=Polarization.TE,
             method=Method.SMATRIX,
         )
         scaling_sweep[label] = t_sweep["mean"]
@@ -80,9 +86,11 @@ stack_labels = list(stacks.keys())
 
 fig, ax = plt.subplots(figsize=(7, 4))
 x = range(len(stack_labels))
-ax.plot(x, [scaling_sweep[l] for l in stack_labels], "o-", label="50×50 sweep")
+ax.plot(x, [scaling_sweep[label] for label in stack_labels], "o-", label="50×50 sweep")
 ax.plot(
-    x, [scaling_scalar[l] * 2500 for l in stack_labels], "s--",
+    x,
+    [scaling_scalar[label] * 2500 for label in stack_labels],
+    "s--",
     label="scalar × 2500 (equiv. evals)",
 )
 ax.set_xticks(x)
@@ -107,16 +115,17 @@ with backend_scope(default_backend):
         method_scaling[m.value] = {}
         for label, s in stacks.items():
             t = time_solve(
-                s, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+                s,
+                wavelengths,
+                kx=kx_vals,
+                polarization=Polarization.TE,
                 method=m,
             )
             method_scaling[m.value][label] = t["min"]
 
 fig, ax = plt.subplots(figsize=(7, 4))
 for mn in [m.value for m in METHODS]:
-    ax.plot(
-        x, [method_scaling[mn][l] for l in stack_labels], "o-", label=mn
-    )
+    ax.plot(x, [method_scaling[mn][label] for label in stack_labels], "o-", label=mn)
 ax.set_xticks(x)
 ax.set_xticklabels(stack_labels, rotation=15, ha="right")
 ax.set_ylabel("Solve time (s)")
@@ -137,18 +146,19 @@ for b in backends:
     with backend_scope(b):
         for label, s in stacks.items():
             t = time_solve(
-                s, wavelengths, kx=kx_vals, polarization=Polarization.TE,
+                s,
+                wavelengths,
+                kx=kx_vals,
+                polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
             scaling[b][label] = t["min"]
 
-table_cols = ["stack"] + list(canonical)
+table_cols = ["stack", *canonical]
 table_data: dict[str, list[str]] = {"stack": list(stacks.keys())}
 for b in canonical:
     if b in backends:
-        table_data[b] = [
-            f"{scaling[b][label]:.3g}" for label in stack_labels
-        ]
+        table_data[b] = [f"{scaling[b][label]:.3g}" for label in stack_labels]
     else:
         table_data[b] = ["—"] * len(stack_labels)
 
@@ -166,10 +176,7 @@ summary_table(
 # across backends.
 
 bar_chart_compare(
-    {
-        b: [scaling[b][label] for label in stack_labels]
-        for b in backends
-    },
+    {b: [scaling[b][label] for label in stack_labels] for b in backends},
     stack_labels,
     title="Scaling: solve time vs stack size across backends (SMATRIX)",
     ylabel="Solve time (s)",

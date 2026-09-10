@@ -142,7 +142,9 @@ class TestLossySuperstrateIsRejected:
             )
         message = str(excinfo.value)
         assert "epsilon" in message
-        assert "substrate" in message, "the message should say a lossy substrate is fine"
+        assert "substrate" in message, (
+            "the message should say a lossy substrate is fine"
+        )
 
 
 class TestRejectionIsDtypeIndependent:
@@ -497,12 +499,18 @@ class TestTracedSolvesStillRun:
             ),
         )
         eager = stratix.solve(
-            stack, wavelengths, kx=kx,
-            polarization=Polarization.TE, method=Method.SMATRIX,
+            stack,
+            wavelengths,
+            kx=kx,
+            polarization=Polarization.TE,
+            method=Method.SMATRIX,
         )
         compiled = jit_solve(
-            stack, wavelengths, kx=kx,
-            polarization=Polarization.TE, method=Method.SMATRIX,
+            stack,
+            wavelengths,
+            kx=kx,
+            polarization=Polarization.TE,
+            method=Method.SMATRIX,
         )
         assert float(nd.max(nd.abs(eager.R - compiled.R))) < 1e-12
         assert float(nd.max(nd.abs(eager.T - compiled.T))) < 1e-12
@@ -514,9 +522,9 @@ class TestTracedSolvesStillRun:
         stack = _stack(superstrate_eps=1.0)
 
         def f(wl):
-            return stratix.solve(
-                stack, wl, kx=0.0, polarization=Polarization.TE
-            ).R[0, 0]
+            return stratix.solve(stack, wl, kx=0.0, polarization=Polarization.TE).R[
+                0, 0
+            ]
 
         grad_ad = float(nd.grad(f)(_WL))
         h = 1e-12

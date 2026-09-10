@@ -41,9 +41,7 @@ class TestGradWavelength:
         )
 
         def f(wl):
-            result = stratix.solve(
-                stack, wl, kx=0.0, polarization=Polarization.TE
-            )
+            result = stratix.solve(stack, wl, kx=0.0, polarization=Polarization.TE)
             return result.R[0, 0]
 
         grad_ad = nd.grad(f)(wavelength_0)
@@ -51,7 +49,6 @@ class TestGradWavelength:
 
         rel_err = abs(float(grad_ad - grad_fd)) / max(abs(float(grad_fd)), 1e-12)
         assert rel_err < 1e-4, f"dR/dλ: AD={grad_ad}, FD={grad_fd}, rel_err={rel_err}"
-
 
     def test_dR_dwavelength_conservation(self, set_backend):
         """d(R+T)/dλ = 0 for lossless dielectric at off-resonance λ."""
@@ -69,22 +66,16 @@ class TestGradWavelength:
         )
 
         def f_R(wl):
-            result = stratix.solve(
-                stack, wl, kx=0.0, polarization=Polarization.TE
-            )
+            result = stratix.solve(stack, wl, kx=0.0, polarization=Polarization.TE)
             return result.R[0, 0]
 
         def f_T(wl):
-            result = stratix.solve(
-                stack, wl, kx=0.0, polarization=Polarization.TE
-            )
+            result = stratix.solve(stack, wl, kx=0.0, polarization=Polarization.TE)
             return result.T[0, 0]
 
         grad_R = float(nd.grad(f_R)(wavelength_0))
         grad_T = float(nd.grad(f_T)(wavelength_0))
-        assert abs(grad_R + grad_T) < 1e-8, (
-            f"dR/dλ + dT/dλ = {grad_R + grad_T}"
-        )
+        assert abs(grad_R + grad_T) < 1e-8, f"dR/dλ + dT/dλ = {grad_R + grad_T}"
 
 
 class TestGradThickness:
@@ -107,7 +98,10 @@ class TestGradThickness:
 
         def f(t):
             result = stratix.solve(
-                stack, wavelength, kx=0.0, polarization=Polarization.TE,
+                stack,
+                wavelength,
+                kx=0.0,
+                polarization=Polarization.TE,
                 thicknesses=nd.array([t]),
             )
             return result.R[0, 0]
@@ -135,7 +129,10 @@ class TestGradThickness:
 
         def f(t):
             result = stratix.solve(
-                stack, wavelength, kx=0.0, polarization=Polarization.TE,
+                stack,
+                wavelength,
+                kx=0.0,
+                polarization=Polarization.TE,
                 thicknesses=nd.array([t]),
             )
             return result.T[0, 0]
@@ -163,14 +160,20 @@ class TestGradThickness:
 
         def f_R(t):
             result = stratix.solve(
-                stack, wavelength, kx=0.0, polarization=Polarization.TE,
+                stack,
+                wavelength,
+                kx=0.0,
+                polarization=Polarization.TE,
                 thicknesses=nd.array([t]),
             )
             return result.R[0, 0]
 
         def f_T(t):
             result = stratix.solve(
-                stack, wavelength, kx=0.0, polarization=Polarization.TE,
+                stack,
+                wavelength,
+                kx=0.0,
+                polarization=Polarization.TE,
                 thicknesses=nd.array([t]),
             )
             return result.T[0, 0]
@@ -204,10 +207,14 @@ class TestMultiLayerGrad:
         for layer_idx, (orig_d, label) in enumerate(
             [(d_a, "layer_a"), (d_b, "layer_b")]
         ):
+
             def f(t, idx=layer_idx, od_a=d_a, od_b=d_b):
                 ts = nd.array([t if idx == 0 else od_a, t if idx == 1 else od_b])
                 result = stratix.solve(
-                    stack, wavelength, kx=0.0, polarization=Polarization.TE,
+                    stack,
+                    wavelength,
+                    kx=0.0,
+                    polarization=Polarization.TE,
                     thicknesses=ts,
                 )
                 return result.R[0, 0]
@@ -245,6 +252,7 @@ class TestGradThicknessAllMethods:
             Method.ADMITTANCE,
             Method.DTN,
         ]:
+
             def f(t, method=method):
                 result = stratix.solve(
                     stack,
@@ -273,7 +281,6 @@ class TestJit:
         if nd.get_backend() == "numpy":
             pytest.skip("numpy backend does not support grad")
 
-
         stack = Stack(
             superstrate=Material(epsilon=1.0),
             substrate=Material(epsilon=2.25),
@@ -281,9 +288,7 @@ class TestJit:
         )
 
         def f(wl):
-            result = stratix.solve(
-                stack, wl, kx=0.0, polarization=Polarization.TE
-            )
+            result = stratix.solve(stack, wl, kx=0.0, polarization=Polarization.TE)
             return result.R[0, 0]
 
         f_jit = nd.jit(f)
@@ -325,12 +330,18 @@ class TestJit:
         )
 
         eager = stratix.solve(
-            stack, wavelengths, kx=kx,
-            polarization=Polarization.TE, method=Method.SMATRIX,
+            stack,
+            wavelengths,
+            kx=kx,
+            polarization=Polarization.TE,
+            method=Method.SMATRIX,
         )
         compiled = jit_solve(
-            stack, wavelengths, kx=kx,
-            polarization=Polarization.TE, method=Method.SMATRIX,
+            stack,
+            wavelengths,
+            kx=kx,
+            polarization=Polarization.TE,
+            method=Method.SMATRIX,
         )
 
         assert float(nd.max(nd.abs(eager.R - compiled.R))) < 1e-12

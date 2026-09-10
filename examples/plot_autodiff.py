@@ -100,7 +100,10 @@ plt.show()
 
 def _R_vs_thickness(t):
     return solve(
-        stack, design_wl, kx=0.0, polarization=Polarization.TE,
+        stack,
+        design_wl,
+        kx=0.0,
+        polarization=Polarization.TE,
         thicknesses=nd.array([t], dtype=nd.float64),
     ).R[0, 0]
 

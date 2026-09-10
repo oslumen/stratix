@@ -180,8 +180,7 @@ class TestNoExactZeroComparisons:
         from stratix import _absorption as absorption_mod
 
         modules = {
-            m.__name__: m
-            for m in (util_mod, smatrix_mod, absorption_mod, medium_mod)
+            m.__name__: m for m in (util_mod, smatrix_mod, absorption_mod, medium_mod)
         }
         checked = set()
 

@@ -14,15 +14,11 @@ from stratix._types import Method
 
 
 def _smatrix_ref(stack, wavelength, kx, polarization):
-    return stratix.solve(
-        stack, wavelength, kx, polarization, method=Method.SMATRIX
-    )
+    return stratix.solve(stack, wavelength, kx, polarization, method=Method.SMATRIX)
 
 
 def _admittance_solve(stack, wavelength, kx, polarization):
-    return stratix.solve(
-        stack, wavelength, kx, polarization, method=Method.ADMITTANCE
-    )
+    return stratix.solve(stack, wavelength, kx, polarization, method=Method.ADMITTANCE)
 
 
 class TestAdmittanceSingleInterface:
@@ -66,7 +62,9 @@ class TestAdmittanceSingleInterface:
             theta_rad = nd.array(nd.pi * theta_deg / 180)
             kx = float(n_air * k0 * nd.sin(theta_rad))
             ref = _smatrix_ref(stack, wavelength, kx=kx, polarization=Polarization.TE)
-            res = _admittance_solve(stack, wavelength, kx=kx, polarization=Polarization.TE)
+            res = _admittance_solve(
+                stack, wavelength, kx=kx, polarization=Polarization.TE
+            )
 
             assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12, (
                 f"theta={theta_deg}: R mismatch"
@@ -84,8 +82,12 @@ class TestAdmittanceSingleInterface:
         wavelength = 5e-7
         k0 = 2 * nd.pi / wavelength
         kx = 1.1 * n_air * k0
-        ref = _smatrix_ref(stack, wavelength, kx=float(kx), polarization=Polarization.TE)
-        res = _admittance_solve(stack, wavelength, kx=float(kx), polarization=Polarization.TE)
+        ref = _smatrix_ref(
+            stack, wavelength, kx=float(kx), polarization=Polarization.TE
+        )
+        res = _admittance_solve(
+            stack, wavelength, kx=float(kx), polarization=Polarization.TE
+        )
 
         assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12
         assert abs(float(res.T[0, 0]) - float(ref.T[0, 0])) < 1e-12
@@ -213,7 +215,9 @@ class TestAdmittanceMultiLayer:
 
         for kx in [0.0, 5e6, 1e7]:
             ref = _smatrix_ref(stack, wavelength, kx=kx, polarization=Polarization.TE)
-            res = _admittance_solve(stack, wavelength, kx=kx, polarization=Polarization.TE)
+            res = _admittance_solve(
+                stack, wavelength, kx=kx, polarization=Polarization.TE
+            )
 
             assert abs(float(res.R[0, 0]) - float(ref.R[0, 0])) < 1e-12, (
                 f"kx={kx}: R mismatch"

@@ -5,6 +5,8 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        # The conda recipe is Jinja-templated YAML, not parseable YAML.
+        exclude: ^recipe/meta\.yaml$
       - id: check-toml
       - id: check-json
       - id: check-added-large-files
@@ -22,8 +24,14 @@ repos:
     rev: v1.16.1
     hooks:
       - id: mypy
+        # Library and tests only: benchmarks, examples, and docs are
+        # gallery scripts, and annotating matplotlib plumbing has no
+        # inference value.
+        files: ^(src|tests)/
         additional_dependencies:
-          - numpy>=2
+          # <2.4: newer numpy stubs use PEP 695 `type` statements, which
+          # mypy refuses to parse under python_version = 3.11.
+          - numpy>=2,<2.4
         args: [--ignore-missing-imports]
 
   - repo: https://github.com/PyCQA/bandit
@@ -36,3 +44,7 @@ repos:
     rev: v2.7.3
     hooks:
       - id: pip-audit
+        additional_dependencies:
+          # The hook audits its own virtualenv, pip included; keep pip at
+          # a version with no known advisories (PYSEC-2026-3721).
+          - pip>=26.2

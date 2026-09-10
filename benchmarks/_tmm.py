@@ -74,7 +74,7 @@ def tmm_reference(
     pol_tmm = "s" if polarization == Polarization.TE else "p"
     infinity = float("inf")
     n_arr = nd.array(n_list)
-    d_arr = nd.array([infinity] + d_list + [infinity])
+    d_arr = nd.array([infinity, *d_list, infinity])
 
     result = _tmm_mod.coh_tmm(pol_tmm, n_arr, d_arr, 0.0, wavelength)
     return float(result["R"]), float(result["T"])

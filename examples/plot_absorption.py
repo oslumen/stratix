@@ -35,9 +35,7 @@ stack = Stack(
 
 wavelengths = np.linspace(400e-9, 800e-9, 200)
 
-res = solve(
-    stack, wavelengths, kx=0.0, polarization=Polarization.TE, absorption=True
-)
+res = solve(stack, wavelengths, kx=0.0, polarization=Polarization.TE, absorption=True)
 
 # ``R`` and ``T`` are always (Nλ, Nk) — here (200, 1), since kx is scalar —
 # and ``layer_absorption`` puts the layer index first, giving (n_layers, 200, 1).

@@ -35,8 +35,7 @@ def _validate_thicknesses(thicknesses: Any, stack: Stack) -> None:
     n_layers = len(stack.layers)
     if n_thick != n_layers:
         raise ValueError(
-            f"thicknesses length ({n_thick}) must match "
-            f"number of layers ({n_layers})"
+            f"thicknesses length ({n_thick}) must match number of layers ({n_layers})"
         )
 
 
@@ -75,11 +74,17 @@ def _dispatch_solve(
 ) -> tuple[nd.ndarray, nd.ndarray, dict]:
     """Call the solver selected by ``resolved``."""
     if resolved == Method.SMATRIX:
-        return _smatrix_solve(stack, wavelength, kx, polarization, thicknesses=thicknesses)
+        return _smatrix_solve(
+            stack, wavelength, kx, polarization, thicknesses=thicknesses
+        )
     elif resolved == Method.ABELES:
-        return _abeles_solve(stack, wavelength, kx, polarization, thicknesses=thicknesses)
+        return _abeles_solve(
+            stack, wavelength, kx, polarization, thicknesses=thicknesses
+        )
     elif resolved == Method.ADMITTANCE:
-        return _admittance_solve(stack, wavelength, kx, polarization, thicknesses=thicknesses)
+        return _admittance_solve(
+            stack, wavelength, kx, polarization, thicknesses=thicknesses
+        )
     elif resolved == Method.DTN:
         return _dtn_solve(stack, wavelength, kx, polarization, thicknesses=thicknesses)
     else:

@@ -9,7 +9,6 @@ import os
 import sys
 from importlib.metadata import version as get_version
 from pathlib import Path
-from typing import Any
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -80,7 +79,6 @@ html_theme_options = {
     "use_issues_button": True,
     "use_download_button": True,
     "use_fullscreen_button": True,
-    "globaltoc_expand_depth": 1,
     "path_to_docs": "docs",
     "footer_logo_url": "https://oslu.men",
 }
@@ -145,6 +143,7 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/devdocs/", None),
 }
+
 
 def _add_toctree_caption(app, docname, source):
     _captions = {

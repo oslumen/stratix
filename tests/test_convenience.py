@@ -124,9 +124,7 @@ class TestSolveAngles:
             substrate=Material(epsilon=2.25),
         )
         with pytest.raises(ValueError, match="90"):
-            stratix.solve_angles(
-                stack, 633e-9, 91.0, polarization=Polarization.TE
-            )
+            stratix.solve_angles(stack, 633e-9, 91.0, polarization=Polarization.TE)
 
     def test_angle_below_0_raises(self, set_backend):
         """θ < 0° should raise ValueError."""
@@ -135,9 +133,7 @@ class TestSolveAngles:
             substrate=Material(epsilon=2.25),
         )
         with pytest.raises(ValueError, match="0"):
-            stratix.solve_angles(
-                stack, 633e-9, -1.0, polarization=Polarization.TE
-            )
+            stratix.solve_angles(stack, 633e-9, -1.0, polarization=Polarization.TE)
 
     def test_R_plus_T_equals_one_lossless(self, set_backend):
         """Energy conservation holds for solve_angles."""
@@ -162,9 +158,7 @@ class TestSolveAngles:
             superstrate=Material(epsilon=1.0),
             substrate=Material(epsilon=2.25),
         )
-        result = stratix.solve_angles(
-            stack, 633e-9, 30.0, polarization=Polarization.TE
-        )
+        result = stratix.solve_angles(stack, 633e-9, 30.0, polarization=Polarization.TE)
         assert result.method_used == stratix.Method.SMATRIX
 
     def test_absorption_flag_accepted(self, set_backend):
@@ -208,12 +202,8 @@ class TestSolveAnglesShapeContract:
         assert both.R.shape == (2, 1, 3)
         assert both.T.shape == (2, 1, 3)
 
-        te = stratix.solve_angles(
-            stack, 633e-9, angles, polarization=Polarization.TE
-        )
-        tm = stratix.solve_angles(
-            stack, 633e-9, angles, polarization=Polarization.TM
-        )
+        te = stratix.solve_angles(stack, 633e-9, angles, polarization=Polarization.TE)
+        tm = stratix.solve_angles(stack, 633e-9, angles, polarization=Polarization.TM)
         assert float(nd.max(nd.abs(both.R[0] - te.R))) < 1e-14
         assert float(nd.max(nd.abs(both.R[1] - tm.R))) < 1e-14
 
@@ -221,8 +211,11 @@ class TestSolveAnglesShapeContract:
         """absorption=True fills layer_absorption and energy_balance."""
         stack = self._absorbing_stack()
         result = stratix.solve_angles(
-            stack, 633e-9, [0.0, 30.0, 60.0],
-            polarization=Polarization.TE, absorption=True,
+            stack,
+            633e-9,
+            [0.0, 30.0, 60.0],
+            polarization=Polarization.TE,
+            absorption=True,
         )
         assert result.layer_absorption is not None
         assert result.layer_absorption.shape == (1, 1, 3)
@@ -235,8 +228,11 @@ class TestSolveAnglesShapeContract:
         """The TE/TM axis leads the absorption fields as well."""
         stack = self._absorbing_stack()
         result = stratix.solve_angles(
-            stack, 633e-9, [0.0, 45.0],
-            polarization=Polarization.BOTH, absorption=True,
+            stack,
+            633e-9,
+            [0.0, 45.0],
+            polarization=Polarization.BOTH,
+            absorption=True,
         )
         assert result.layer_absorption.shape == (2, 1, 1, 2)
         assert result.energy_balance.shape == (2, 1, 2)
@@ -275,9 +271,7 @@ class TestSolveFromSource:
         wavelength = 633e-9
         pw = self._make_plane_wave(wavelength, 0.0)
 
-        result_src = stratix.solve_from_source(
-            stack, pw, polarization=Polarization.TE
-        )
+        result_src = stratix.solve_from_source(stack, pw, polarization=Polarization.TE)
         result_direct = stratix.solve(
             stack, wavelength, kx=0.0, polarization=Polarization.TE
         )
@@ -300,9 +294,7 @@ class TestSolveFromSource:
         theta_rad = nd.array(theta_deg * nd.pi / 180)
         expected_kx = float(n_air * k0 * nd.sin(theta_rad))
 
-        result_src = stratix.solve_from_source(
-            stack, pw, polarization=Polarization.TE
-        )
+        result_src = stratix.solve_from_source(stack, pw, polarization=Polarization.TE)
         result_direct = stratix.solve(
             stack, wavelength, kx=expected_kx, polarization=Polarization.TE
         )
@@ -326,9 +318,7 @@ class TestSolveFromSource:
         theta_rad = nd.array(theta_deg * nd.pi / 180)
         expected_kx = float(n_air * k0 * nd.sin(theta_rad))
 
-        result_src = stratix.solve_from_source(
-            stack, pw, polarization=Polarization.TM
-        )
+        result_src = stratix.solve_from_source(stack, pw, polarization=Polarization.TM)
         result_direct = stratix.solve(
             stack, wavelength, kx=expected_kx, polarization=Polarization.TM
         )
@@ -351,9 +341,7 @@ class TestSolveFromSource:
             amplitude=nd.array([1.0 + 0j]),
         )
 
-        result_src = stratix.solve_from_source(
-            stack, pw, polarization=Polarization.TE
-        )
+        result_src = stratix.solve_from_source(stack, pw, polarization=Polarization.TE)
         result_direct = stratix.solve(
             stack, wavelength, kx=0.0, polarization=Polarization.TE
         )
@@ -381,9 +369,7 @@ class TestSolveFromSource:
         k0 = 2 * nd.pi / wavelength
         expected_kx = float(k0 * nd.cos(nd.array(theta_rad)))
 
-        result_src = stratix.solve_from_source(
-            stack, pw, polarization=Polarization.TE
-        )
+        result_src = stratix.solve_from_source(stack, pw, polarization=Polarization.TE)
         result_direct = stratix.solve(
             stack, wavelength, kx=expected_kx, polarization=Polarization.TE
         )
@@ -405,9 +391,7 @@ class TestSolveFromSource:
             amplitude=nd.array([0.0 + 0j, 1.0 + 0j, 0.0 + 0j]),
         )
         with pytest.raises(ValueError, match="omega"):
-            stratix.solve_from_source(
-                stack, pw, polarization=Polarization.TE
-            )
+            stratix.solve_from_source(stack, pw, polarization=Polarization.TE)
 
     def test_method_auto_resolves_to_smatrix(self, set_backend):
         """solve_from_source defaults to AUTO → SMATRIX."""
@@ -416,9 +400,7 @@ class TestSolveFromSource:
             substrate=Material(epsilon=2.25),
         )
         pw = self._make_plane_wave(633e-9, 30.0)
-        result = stratix.solve_from_source(
-            stack, pw, polarization=Polarization.TE
-        )
+        result = stratix.solve_from_source(stack, pw, polarization=Polarization.TE)
         assert result.method_used == stratix.Method.SMATRIX
 
     def test_R_plus_T_equals_one_lossless(self, set_backend):
@@ -432,9 +414,7 @@ class TestSolveFromSource:
 
         for theta in [0, 20, 45, 60]:
             pw = self._make_plane_wave(wavelength, theta, n_mat=n_air)
-            result = stratix.solve_from_source(
-                stack, pw, polarization=Polarization.TE
-            )
+            result = stratix.solve_from_source(stack, pw, polarization=Polarization.TE)
             R = float(result.R[0, 0])
             T = float(result.T[0, 0])
             assert abs(R + T - 1.0) < 1e-12, f"θ={theta}: R+T={R + T}"
@@ -486,16 +466,16 @@ class TestSolveAnglesVectorized:
         theta = 40.0
 
         n_super = self._n_super_at(superstrate, wavelength).real
-        kx = n_super * (2 * nd.pi / wavelength) * float(
-            nd.sin(nd.array(theta * nd.pi / 180))
+        kx = (
+            n_super
+            * (2 * nd.pi / wavelength)
+            * float(nd.sin(nd.array(theta * nd.pi / 180)))
         )
 
         conv = stratix.solve_angles(
             stack, wavelength, theta, polarization=Polarization.TE
         )
-        direct = stratix.solve(
-            stack, wavelength, kx=kx, polarization=Polarization.TE
-        )
+        direct = stratix.solve(stack, wavelength, kx=kx, polarization=Polarization.TE)
 
         assert abs(float(conv.R[0, 0]) - float(direct.R[0, 0])) < 1e-12
         assert abs(float(conv.T[0, 0]) - float(direct.T[0, 0])) < 1e-12
@@ -517,7 +497,9 @@ class TestSolveAnglesVectorized:
             superstrate=Material(epsilon=1.0), substrate=Material(epsilon=2.25)
         )
         stratix.solve_angles(
-            stack, 633e-9, [0.0, 15.0, 30.0, 45.0, 60.0],
+            stack,
+            633e-9,
+            [0.0, 15.0, 30.0, 45.0, 60.0],
             polarization=Polarization.TE,
         )
         assert len(calls) == 1
@@ -554,9 +536,7 @@ class TestSolveAnglesVectorized:
             stack, wavelengths, angles, polarization=Polarization.TE
         )
         for i, wl in enumerate(wavelengths):
-            row = stratix.solve_angles(
-                stack, wl, angles, polarization=Polarization.TE
-            )
+            row = stratix.solve_angles(stack, wl, angles, polarization=Polarization.TE)
             assert float(nd.max(nd.abs(grid.R[i] - row.R[0]))) < 1e-12
             assert float(nd.max(nd.abs(grid.T[i] - row.T[0]))) < 1e-12
 
@@ -578,8 +558,11 @@ class TestSolveAnglesVectorized:
             layers=[Layer(thickness=80e-9, material=Material(epsilon=4.0))],
         )
         result = stratix.solve_angles(
-            stack, [500e-9, 600e-9], [0.0, 45.0],
-            polarization=Polarization.BOTH, absorption=True,
+            stack,
+            [500e-9, 600e-9],
+            [0.0, 45.0],
+            polarization=Polarization.BOTH,
+            absorption=True,
         )
         assert result.R.shape == (2, 2, 2)
         assert result.layer_absorption.shape == (2, 1, 2, 2)
@@ -653,9 +636,7 @@ class TestSolveAnglesVectorized:
             superstrate=Material(epsilon=-2.0),
             substrate=Material(epsilon=4.0),
         )
-        result = stratix.solve(
-            stack, 633e-9, kx=0.0, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, 633e-9, kx=0.0, polarization=Polarization.TE)
         assert float(result.R[0, 0]) == pytest.approx(1.0)
         assert float(result.T[0, 0]) == pytest.approx(0.0)
 
@@ -731,7 +712,10 @@ class TestSolveAnglesVectorized:
 
         def f(d):
             return stratix.solve_angles(
-                stack, 633e-9, 30.0, polarization=Polarization.TE,
+                stack,
+                633e-9,
+                30.0,
+                polarization=Polarization.TE,
                 thicknesses=[d],
             ).R[0, 0]
 

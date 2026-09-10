@@ -50,11 +50,17 @@ backend_mems: dict[str, float] = {}
 for b in backends:
     with backend_scope(b):
         t = time_solve(
-            stack, wavelength, kx=kx, polarization=Polarization.TE,
+            stack,
+            wavelength,
+            kx=kx,
+            polarization=Polarization.TE,
             method=Method.SMATRIX,
         )
         m = measure_memory(
-            stack, wavelength, kx=kx, polarization=Polarization.TE,
+            stack,
+            wavelength,
+            kx=kx,
+            polarization=Polarization.TE,
             method=Method.SMATRIX,
         )
     backend_times[b] = t["min"]
@@ -87,9 +93,7 @@ summary_table(
 method_times: dict[str, float] = {}
 with backend_scope("numpy"):
     for m in METHODS:
-        t = time_solve(
-            stack, wavelength, kx=kx, polarization=Polarization.TE, method=m
-        )
+        t = time_solve(stack, wavelength, kx=kx, polarization=Polarization.TE, method=m)
         method_times[m.value] = t["min"]
 
 method_names = [m.value for m in METHODS]
@@ -145,11 +149,17 @@ if steady_backends:
     for b in steady_backends:
         with backend_scope(b):
             _ = solve(
-                stack, wavelength, kx=kx, polarization=Polarization.TE,
+                stack,
+                wavelength,
+                kx=kx,
+                polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
             t_steady = time_solve(
-                stack, wavelength, kx=kx, polarization=Polarization.TE,
+                stack,
+                wavelength,
+                kx=kx,
+                polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
         steady_times[b] = t_steady["min"]
@@ -176,21 +186,33 @@ if nd.HAS_CUDA:
     for b in gpu_backends:
         with backend_scope(b, gpu=False):
             _ = solve(
-                stack, wavelength, kx=kx, polarization=Polarization.TE,
+                stack,
+                wavelength,
+                kx=kx,
+                polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
             t_cpu = time_solve(
-                stack, wavelength, kx=kx, polarization=Polarization.TE,
+                stack,
+                wavelength,
+                kx=kx,
+                polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
         gpu_cpu[b] = t_cpu["mean"]
         with backend_scope(b, gpu=True):
             _ = solve(
-                stack, wavelength, kx=kx, polarization=Polarization.TE,
+                stack,
+                wavelength,
+                kx=kx,
+                polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
             t_gpu = time_solve(
-                stack, wavelength, kx=kx, polarization=Polarization.TE,
+                stack,
+                wavelength,
+                kx=kx,
+                polarization=Polarization.TE,
                 method=Method.SMATRIX,
             )
         gpu_gpu[b] = t_gpu["mean"]
@@ -222,8 +244,12 @@ if _tmm_available():
         stack, wavelength, kx=kx, polarization=Polarization.TE, method=Method.SMATRIX
     )
 
-    print(f"R — stratix: {cmp['R_stratix']:.8f}  tmm: {cmp['R_tmm']:.8f}  err: {cmp['R_err']:.2e}")
-    print(f"T — stratix: {cmp['T_stratix']:.8f}  tmm: {cmp['T_tmm']:.8f}  err: {cmp['T_err']:.2e}")
+    print(
+        f"R — stratix: {cmp['R_stratix']:.8f}  tmm: {cmp['R_tmm']:.8f}  err: {cmp['R_err']:.2e}"
+    )
+    print(
+        f"T — stratix: {cmp['T_stratix']:.8f}  tmm: {cmp['T_tmm']:.8f}  err: {cmp['T_err']:.2e}"
+    )
 
     if cmp["R_err"] < 1e-10 and cmp["T_err"] < 1e-10:
         print("✓ stratix agrees with tmm within tolerance.")

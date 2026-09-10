@@ -19,9 +19,7 @@ class TestFieldSingleInterfaceTE:
             substrate=Material(epsilon=n_glass**2),
         )
         wavelength = 5e-7
-        result = stratix.solve(
-            stack, wavelength, kx=0.0, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, wavelength, kx=0.0, polarization=Polarization.TE)
 
         eps = 1e-20
         z = nd.array([-eps, eps])
@@ -38,9 +36,7 @@ class TestFieldSingleInterfaceTE:
             substrate=Material(epsilon=n_glass**2),
         )
         wavelength = 5e-7
-        result = stratix.solve(
-            stack, wavelength, kx=0.0, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, wavelength, kx=0.0, polarization=Polarization.TE)
 
         eps = 1e-20
         z = nd.array([-eps, eps])
@@ -57,9 +53,7 @@ class TestFieldSingleInterfaceTE:
             substrate=Material(epsilon=n_glass**2),
         )
         wavelength = 5e-7
-        result = stratix.solve(
-            stack, wavelength, kx=0.0, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, wavelength, kx=0.0, polarization=Polarization.TE)
 
         z = nd.array([-wavelength / 4, 0.0])
         field = stratix.compute_field_profile(result, z)
@@ -77,9 +71,7 @@ class TestFieldSingleInterfaceTE:
             substrate=Material(epsilon=n_glass**2),
         )
         wavelength = 5e-7
-        result = stratix.solve(
-            stack, wavelength, kx=0.0, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, wavelength, kx=0.0, polarization=Polarization.TE)
 
         z = nd.array([1e-9, 100e-9, 200e-9])
         field = stratix.compute_field_profile(result, z)
@@ -99,9 +91,7 @@ class TestFieldSingleInterfaceTE:
         theta_deg = 30.0
         kx = float(n_air * k0 * nd.sin(nd.array(theta_deg * nd.pi / 180)))
 
-        result = stratix.solve(
-            stack, wavelength, kx=kx, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, wavelength, kx=kx, polarization=Polarization.TE)
 
         eps = 1e-20
         z = nd.array([-eps, eps])
@@ -132,16 +122,12 @@ class TestFieldMultiLayerTE:
             ],
         )
 
-        result = stratix.solve(
-            stack, wavelength, kx=0.0, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, wavelength, kx=0.0, polarization=Polarization.TE)
 
         z0 = d_a
         z1 = d_a + d_b
         eps = 1e-20
-        z = nd.array(
-            [-eps, eps, z0 - eps, z0 + eps, z1 - eps, z1 + eps]
-        )
+        z = nd.array([-eps, eps, z0 - eps, z0 + eps, z1 - eps, z1 + eps])
         field = stratix.compute_field_profile(result, z)
 
         assert abs(field["E"][0, 0][0] - field["E"][0, 0][1]) < 1e-8
@@ -163,12 +149,8 @@ class TestFieldMultiLayerTE:
         N = 3
         layers = []
         for _ in range(N):
-            layers.append(
-                Layer(thickness=d_high, material=Material(epsilon=n_high**2))
-            )
-            layers.append(
-                Layer(thickness=d_low, material=Material(epsilon=n_low**2))
-            )
+            layers.append(Layer(thickness=d_high, material=Material(epsilon=n_high**2)))
+            layers.append(Layer(thickness=d_low, material=Material(epsilon=n_low**2)))
 
         stack = Stack(
             superstrate=Material(epsilon=n_air**2),
@@ -176,9 +158,7 @@ class TestFieldMultiLayerTE:
             layers=layers,
         )
 
-        result = stratix.solve(
-            stack, wavelength, kx=0.0, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, wavelength, kx=0.0, polarization=Polarization.TE)
 
         thicknesses = [d_high, d_low] * N
         z_interfaces = [sum(thicknesses[:i]) for i in range(len(thicknesses) + 1)]
@@ -198,12 +178,8 @@ class TestFieldMultiLayerTE:
             E_right = field["E"][0, 0][2 * i + 1]
             H_left = field["H"][0, 0][2 * i]
             H_right = field["H"][0, 0][2 * i + 1]
-            assert abs(E_left - E_right) < 1e-8, (
-                f"E discontinuity at interface {i}"
-            )
-            assert abs(H_left - H_right) < 1e-4, (
-                f"H discontinuity at interface {i}"
-            )
+            assert abs(E_left - E_right) < 1e-8, f"E discontinuity at interface {i}"
+            assert abs(H_left - H_right) < 1e-4, f"H discontinuity at interface {i}"
 
     def test_substrate_traveling_wave_bragg(self, set_backend):
         """|E|^2 constant in substrate for Bragg mirror (pure traveling wave)."""
@@ -216,12 +192,8 @@ class TestFieldMultiLayerTE:
         N = 4
         layers = []
         for _ in range(N):
-            layers.append(
-                Layer(thickness=d_high, material=Material(epsilon=n_high**2))
-            )
-            layers.append(
-                Layer(thickness=d_low, material=Material(epsilon=n_low**2))
-            )
+            layers.append(Layer(thickness=d_high, material=Material(epsilon=n_high**2)))
+            layers.append(Layer(thickness=d_low, material=Material(epsilon=n_low**2)))
 
         stack = Stack(
             superstrate=Material(epsilon=n_air**2),
@@ -229,9 +201,7 @@ class TestFieldMultiLayerTE:
             layers=layers,
         )
 
-        result = stratix.solve(
-            stack, wavelength, kx=0.0, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, wavelength, kx=0.0, polarization=Polarization.TE)
 
         thicknesses = [d_high, d_low] * N
         total = sum(thicknesses)
@@ -240,7 +210,9 @@ class TestFieldMultiLayerTE:
 
         E2_vals = [float(abs(ee) ** 2) for ee in field["E"][0, 0]]
         for v in E2_vals:
-            assert abs(v - E2_vals[0]) < 1e-12, f"|E|^2 not constant in substrate: {E2_vals}"
+            assert abs(v - E2_vals[0]) < 1e-12, (
+                f"|E|^2 not constant in substrate: {E2_vals}"
+            )
 
     def test_returns_dict_with_arrays(self, set_backend):
         n_air, n_glass = 1.0, 1.5
@@ -249,9 +221,7 @@ class TestFieldMultiLayerTE:
             substrate=Material(epsilon=n_glass**2),
         )
         wavelength = 5e-7
-        result = stratix.solve(
-            stack, wavelength, kx=0.0, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, wavelength, kx=0.0, polarization=Polarization.TE)
 
         z = nd.array([-200e-9, -100e-9, 0.0, 100e-9, 200e-9])
         field = stratix.compute_field_profile(result, z)
@@ -272,9 +242,7 @@ class TestFieldTM:
             substrate=Material(epsilon=n_glass**2),
         )
         wavelength = 5e-7
-        result = stratix.solve(
-            stack, wavelength, kx=0.0, polarization=Polarization.TM
-        )
+        result = stratix.solve(stack, wavelength, kx=0.0, polarization=Polarization.TM)
 
         eps = 1e-20
         z = nd.array([-eps, eps])
@@ -309,9 +277,7 @@ class TestFieldBoth:
         both = stratix.compute_field_profile(
             self._off_normal_solve(Polarization.BOTH), z
         )
-        te = stratix.compute_field_profile(
-            self._off_normal_solve(Polarization.TE), z
-        )
+        te = stratix.compute_field_profile(self._off_normal_solve(Polarization.TE), z)
         for i in range(2):
             for j in range(len(z)):
                 assert abs(both["E"][0, i, 0, j] - te["E"][i, 0, j]) < 1e-14
@@ -322,9 +288,7 @@ class TestFieldBoth:
         both = stratix.compute_field_profile(
             self._off_normal_solve(Polarization.BOTH), z
         )
-        tm = stratix.compute_field_profile(
-            self._off_normal_solve(Polarization.TM), z
-        )
+        tm = stratix.compute_field_profile(self._off_normal_solve(Polarization.TM), z)
         for i in range(2):
             for j in range(len(z)):
                 assert abs(both["E"][1, i, 0, j] - tm["E"][i, 0, j]) < 1e-14
@@ -347,7 +311,10 @@ class TestFieldNonSmatrix:
     def test_abeles_raises_value_error(self, set_backend):
         stack = _sweep_stack()
         result = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
             method=stratix.Method.ABELES,
         )
         z = nd.array([0.0, 50e-9])
@@ -360,7 +327,10 @@ class TestFieldNonSmatrix:
     def test_abeles_both_raises_value_error(self, set_backend):
         stack = _sweep_stack()
         result = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.BOTH,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.BOTH,
             method=stratix.Method.ABELES,
         )
         z = nd.array([0.0, 50e-9])
@@ -396,9 +366,7 @@ class TestFieldSweep:
     def test_wavelength_sweep_shape(self, set_backend):
         stack = _sweep_stack()
         wavelengths = nd.array([4e-7, 5e-7, 6e-7])
-        result = stratix.solve(
-            stack, wavelengths, kx=0.0, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, wavelengths, kx=0.0, polarization=Polarization.TE)
 
         z = nd.array([-100e-9, 0.0, 50e-9, 300e-9])
         field = stratix.compute_field_profile(result, z)
@@ -434,9 +402,7 @@ class TestFieldSweep:
         stack = _sweep_stack()
         wavelengths = nd.array([4e-7, 5e-7, 6e-7])
         kx = nd.array([0.0, 1e6])
-        result = stratix.solve(
-            stack, wavelengths, kx=kx, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, wavelengths, kx=kx, polarization=Polarization.TE)
 
         z = nd.array([-100e-9, 50e-9, 300e-9])
         field = stratix.compute_field_profile(result, z)
@@ -447,9 +413,7 @@ class TestFieldSweep:
     def test_sweep_continuity_at_interfaces(self, set_backend):
         stack = _sweep_stack()
         wavelengths = nd.array([4e-7, 6e-7])
-        result = stratix.solve(
-            stack, wavelengths, kx=0.0, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, wavelengths, kx=0.0, polarization=Polarization.TE)
 
         d_a = stack.layers[0].thickness
         d_b = stack.layers[1].thickness

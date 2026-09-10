@@ -77,7 +77,9 @@ class TestBothPolarization:
         k0 = 2 * nd.pi / wavelength
         theta_B = float(nd.arctan(nd.array(n_glass / n_air)))
         kx_B = n_air * k0 * float(nd.sin(nd.array(theta_B)))
-        result = stratix.solve(stack, wavelength, kx=kx_B, polarization=Polarization.BOTH)
+        result = stratix.solve(
+            stack, wavelength, kx=kx_B, polarization=Polarization.BOTH
+        )
         assert abs(float(result.R[1, 0, 0])) < 1e-12
 
     def test_energy_conservation_both_polarizations(self, set_backend):

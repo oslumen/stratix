@@ -29,7 +29,7 @@ sio2 = Material(epsilon=1.46**2, name="SiO₂")
 substrate = Material(epsilon=1.52**2, name="Glass")
 
 design_wl = 550e-9
-d_tio2 = design_wl / (4 * 2.6)   # ~52.9 nm
+d_tio2 = design_wl / (4 * 2.6)  # ~52.9 nm
 d_sio2 = design_wl / (4 * 1.46)  # ~94.2 nm
 
 num_pairs = 8
@@ -62,7 +62,6 @@ ax.set_title(f"Bragg mirror ({num_pairs} pairs TiO₂/SiO₂)")
 plt.show()
 
 
-
 # %%
 # The E-field magnitude is continuous across interfaces, while the
 # H-field magnitude jumps according to the wave impedance contrast.
@@ -71,8 +70,10 @@ plt.show()
 thickness = sum(layer.thickness for layer in layers)
 z = np.linspace(-200e-9, thickness + 200e-9, 500)
 
-for wl in [design_wl,452e-9]:
-    result = solve(mirror, wl, kx=0.0, polarization=Polarization.TE, method=Method.SMATRIX)
+for wl in [design_wl, 452e-9]:
+    result = solve(
+        mirror, wl, kx=0.0, polarization=Polarization.TE, method=Method.SMATRIX
+    )
 
     fields = compute_field_profile(result, z)
     # Field profiles are (Nλ, Nk, Nz); this is a scalar solve, so take the
@@ -86,7 +87,7 @@ for wl in [design_wl,452e-9]:
     ax1.axvline(0, color="gray", linestyle="--", alpha=0.5)
     ax1.axvline(thickness * 1e9, color="gray", linestyle="--", alpha=0.5)
     ax1.set_ylabel("|E| (a.u.)")
-    ax1.set_title(f"Field profiles — Bragg mirror @ {wl*1e9} nm")
+    ax1.set_title(f"Field profiles — Bragg mirror @ {wl * 1e9} nm")
 
     ax2.plot(z * 1e9, np.abs(H))
     ax2.axvline(0, color="gray", linestyle="--", alpha=0.5)

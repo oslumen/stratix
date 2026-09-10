@@ -47,9 +47,7 @@ class TestWavelengthArray:
             substrate=Material(epsilon=2.25),
         )
         wavelengths = nd.array([4e-7, 5e-7, 6e-7])
-        result = stratix.solve(
-            stack, wavelengths, kx=0.0, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, wavelengths, kx=0.0, polarization=Polarization.TE)
         assert result.R.shape == (3, 1)
         assert result.T.shape == (3, 1)
         assert result.wavelengths.shape == (3,)
@@ -62,9 +60,7 @@ class TestWavelengthArray:
             substrate=Material(epsilon=n_glass**2),
         )
         wavelengths = nd.array([4e-7, 5e-7, 6e-7, 7e-7])
-        result = stratix.solve(
-            stack, wavelengths, kx=0.0, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, wavelengths, kx=0.0, polarization=Polarization.TE)
         for i in range(len(wavelengths)):
             R = float(result.R[i, 0])
             T = float(result.T[i, 0])
@@ -76,13 +72,9 @@ class TestWavelengthArray:
             substrate=Material(epsilon=2.25),
         )
         wavelengths = nd.array([4e-7, 5e-7, 6e-7])
-        result = stratix.solve(
-            stack, wavelengths, kx=0.0, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, wavelengths, kx=0.0, polarization=Polarization.TE)
         for i, wl in enumerate(float(w) for w in wavelengths):
-            single = stratix.solve(
-                stack, wl, kx=0.0, polarization=Polarization.TE
-            )
+            single = stratix.solve(stack, wl, kx=0.0, polarization=Polarization.TE)
             assert abs(float(result.R[i, 0]) - float(single.R[0, 0])) < 1e-12
             assert abs(float(result.T[i, 0]) - float(single.T[0, 0])) < 1e-12
 
@@ -96,9 +88,7 @@ class TestKxArray:
             substrate=Material(epsilon=2.25),
         )
         kx_vals = nd.array([0.0, 5e6, 1e7])
-        result = stratix.solve(
-            stack, 5e-7, kx=kx_vals, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, 5e-7, kx=kx_vals, polarization=Polarization.TE)
         assert result.R.shape == (1, 3)
         assert result.T.shape == (1, 3)
         assert result.wavelengths.shape == (1,)
@@ -110,9 +100,7 @@ class TestKxArray:
             substrate=Material(epsilon=2.25),
         )
         kx_vals = nd.array([0.0, 5e6, 1e7])
-        result = stratix.solve(
-            stack, 5e-7, kx=kx_vals, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, 5e-7, kx=kx_vals, polarization=Polarization.TE)
         for i in range(len(kx_vals)):
             assert abs(float(result.R[0, i]) + float(result.T[0, i]) - 1.0) < 1e-12
 
@@ -122,13 +110,9 @@ class TestKxArray:
             substrate=Material(epsilon=2.25),
         )
         kx_vals = nd.array([0.0, 5e6, 1e7])
-        result = stratix.solve(
-            stack, 5e-7, kx=kx_vals, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, 5e-7, kx=kx_vals, polarization=Polarization.TE)
         for i, kv in enumerate(float(k) for k in kx_vals):
-            single = stratix.solve(
-                stack, 5e-7, kx=kv, polarization=Polarization.TE
-            )
+            single = stratix.solve(stack, 5e-7, kx=kv, polarization=Polarization.TE)
             assert abs(float(result.R[0, i]) - float(single.R[0, 0])) < 1e-12
 
 
@@ -180,9 +164,7 @@ class TestMultiLayerVectorized:
             layers=[Layer(thickness=d, material=Material(epsilon=n_coat**2))],
         )
         wavelengths = nd.array([4.5e-7, 5e-7, 5.5e-7])
-        result = stratix.solve(
-            stack, wavelengths, kx=0.0, polarization=Polarization.TE
-        )
+        result = stratix.solve(stack, wavelengths, kx=0.0, polarization=Polarization.TE)
         assert result.R.shape == (3, 1)
         assert float(result.R[1, 0]) < 1e-12  # zero reflection at design wavelength
 
@@ -197,7 +179,10 @@ class TestMethodWithArrays:
         )
         wavelengths = nd.array([4e-7, 5e-7, 6e-7])
         result = stratix.solve(
-            stack, wavelengths, kx=0.0, polarization=Polarization.TE,
+            stack,
+            wavelengths,
+            kx=0.0,
+            polarization=Polarization.TE,
             method=Method.ABELES,
         )
         assert result.R.shape == (3, 1)
@@ -210,7 +195,10 @@ class TestMethodWithArrays:
         )
         wavelengths = nd.array([4e-7, 5e-7, 6e-7])
         result = stratix.solve(
-            stack, wavelengths, kx=0.0, polarization=Polarization.TE,
+            stack,
+            wavelengths,
+            kx=0.0,
+            polarization=Polarization.TE,
             method=Method.ADMITTANCE,
         )
         assert result.R.shape == (3, 1)
@@ -222,7 +210,10 @@ class TestMethodWithArrays:
         )
         wavelengths = nd.array([4e-7, 5e-7, 6e-7])
         result = stratix.solve(
-            stack, wavelengths, kx=0.0, polarization=Polarization.TE,
+            stack,
+            wavelengths,
+            kx=0.0,
+            polarization=Polarization.TE,
             method=Method.DTN,
         )
         assert result.R.shape == (3, 1)

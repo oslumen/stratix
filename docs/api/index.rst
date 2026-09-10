@@ -8,5 +8,3 @@ The public API is a flat namespace imported from ``stratix``.
     :caption: API
 
     api.rst
-
-    

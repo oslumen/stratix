@@ -69,7 +69,10 @@ line-length = 88
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
-ignore = ["E501"]
+# RUF001-003 flag "ambiguous" unicode; this repo's prose is full of
+# deliberate physics notation (omega, lambda, x, en dashes) in
+# docstrings, comments, and gallery text, so the rules are pure noise.
+ignore = ["E501", "RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.isort]
 force-single-line = true
@@ -84,6 +87,14 @@ disallow_untyped_defs = true
 [[tool.mypy.overrides]]
 module = ["scipy.*", "loguru"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Tests are typed by pytest fixtures, not annotations; holding them to
+# disallow_untyped_defs would annotate hundreds of test signatures for
+# no inference benefit.
+module = ["tests.*", "conftest"]
+disallow_untyped_defs = false
+check_untyped_defs = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

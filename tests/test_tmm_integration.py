@@ -62,7 +62,9 @@ class TestTmmSingleInterface:
         )
         wavelength = 5e-7
         R_s, T_s = _stratix_solve(stack, wavelength, 0.0, Polarization.TE)
-        R_t, T_t = _tmm_reference([n_air, n_glass], [], 0.0, wavelength, Polarization.TE)
+        R_t, T_t = _tmm_reference(
+            [n_air, n_glass], [], 0.0, wavelength, Polarization.TE
+        )
         assert abs(R_s - R_t) < 1e-12
         assert abs(T_s - T_t) < 1e-12
 
@@ -74,7 +76,9 @@ class TestTmmSingleInterface:
         )
         wavelength = 5e-7
         R_s, T_s = _stratix_solve(stack, wavelength, 0.0, Polarization.TM)
-        R_t, T_t = _tmm_reference([n_air, n_glass], [], 0.0, wavelength, Polarization.TM)
+        R_t, T_t = _tmm_reference(
+            [n_air, n_glass], [], 0.0, wavelength, Polarization.TM
+        )
         assert abs(R_s - R_t) < 1e-12
         assert abs(T_s - T_t) < 1e-12
 
@@ -375,13 +379,9 @@ class TestTmmLayerAbsorption:
         for theta in [0, 20, 40, 60]:
             for pol in (Polarization.TE, Polarization.TM):
                 kx = float(n_air * k0 * np.sin(np.pi * theta / 180))
-                result = stratix.solve(
-                    stack, wavelength, kx, pol, absorption=True
-                )
+                result = stratix.solve(stack, wavelength, kx, pol, absorption=True)
                 A_s = [float(a[0, 0]) for a in result.layer_absorption]
-                A_t = _tmm_layer_absorption(
-                    n_list, d_list, theta, wavelength, pol
-                )
+                A_t = _tmm_layer_absorption(n_list, d_list, theta, wavelength, pol)
                 for i, (a_s, a_t) in enumerate(zip(A_s, A_t, strict=True)):
                     assert abs(a_s - a_t) < 1e-12, (
                         f"theta={theta} {pol} layer {i}: {a_s} vs {a_t}"
@@ -409,13 +409,9 @@ class TestTmmLayerAbsorption:
         for theta in [0, 35]:
             for pol in (Polarization.TE, Polarization.TM):
                 kx = float(n_air * k0 * np.sin(np.pi * theta / 180))
-                result = stratix.solve(
-                    stack, wavelength, kx, pol, absorption=True
-                )
+                result = stratix.solve(stack, wavelength, kx, pol, absorption=True)
                 A_s = [float(a[0, 0]) for a in result.layer_absorption]
-                A_t = _tmm_layer_absorption(
-                    n_list, d_list, theta, wavelength, pol
-                )
+                A_t = _tmm_layer_absorption(n_list, d_list, theta, wavelength, pol)
                 for i, (a_s, a_t) in enumerate(zip(A_s, A_t, strict=True)):
                     assert abs(a_s - a_t) < 1e-12, (
                         f"theta={theta} {pol} layer {i}: {a_s} vs {a_t}"

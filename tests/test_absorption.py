@@ -30,7 +30,11 @@ class TestAbsorptionLossless:
             substrate=Material(epsilon=2.25),
         )
         result = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE, absorption=True,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
+            absorption=True,
         )
         assert result.layer_absorption is not None
         assert len(result.layer_absorption) == 0
@@ -47,7 +51,11 @@ class TestAbsorptionLossless:
             layers=[Layer(thickness=d, material=Material(epsilon=n_coat**2))],
         )
         result = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE, absorption=True,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
+            absorption=True,
         )
         assert result.layer_absorption is not None
         assert len(result.layer_absorption) == 1
@@ -68,7 +76,11 @@ class TestAbsorptionLossless:
             layers=layers,
         )
         result = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE, absorption=True,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
+            absorption=True,
         )
         assert result.layer_absorption is not None
         assert len(result.layer_absorption) == 10
@@ -92,7 +104,11 @@ class TestAbsorptionLossy:
             ],
         )
         result = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE, absorption=True,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
+            absorption=True,
         )
         assert result.layer_absorption is not None
         assert len(result.layer_absorption) == 1
@@ -110,11 +126,17 @@ class TestAbsorptionLossy:
             ],
         )
         result = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE, absorption=True,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
+            absorption=True,
         )
-        balance = float(result.R[0, 0]) + float(result.T[0, 0]) + float(sum(
-            _scalar(a) for a in result.layer_absorption
-        ))
+        balance = (
+            float(result.R[0, 0])
+            + float(result.T[0, 0])
+            + float(sum(_scalar(a) for a in result.layer_absorption))
+        )
         assert abs(balance - 1.0) < 1e-12
 
     def test_energy_balance_equals_field(self, set_backend):
@@ -128,7 +150,11 @@ class TestAbsorptionLossy:
             ],
         )
         result = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE, absorption=True,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
+            absorption=True,
         )
         assert abs(_scalar(result.energy_balance) - 1.0) < 1e-12
 
@@ -146,7 +172,11 @@ class TestAbsorptionLossy:
             ],
         )
         result = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE, absorption=True,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
+            absorption=True,
         )
         assert result.layer_absorption is not None
         assert len(result.layer_absorption) == 2
@@ -164,7 +194,11 @@ class TestAbsorptionOff:
             substrate=Material(epsilon=2.25),
         )
         result = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE, absorption=False,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
+            absorption=False,
         )
         assert result.layer_absorption is None
         assert result.energy_balance is None
@@ -175,7 +209,10 @@ class TestAbsorptionOff:
             substrate=Material(epsilon=2.25),
         )
         result = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
         )
         assert result.layer_absorption is None
 
@@ -194,7 +231,11 @@ class TestAbsorptionTM:
             ],
         )
         result = stratix.solve(
-            stack, 5e-7, kx=5e6, polarization=Polarization.TM, absorption=True,
+            stack,
+            5e-7,
+            kx=5e6,
+            polarization=Polarization.TM,
+            absorption=True,
         )
         assert result.layer_absorption is not None
         assert len(result.layer_absorption) == 1
@@ -243,7 +284,10 @@ class TestAbsorptionAttribution:
         """All absorption sits in the lossy layer, none in the Bragg mirror."""
         stack, wavelength = _absorber_then_bragg()
         result = stratix.solve(
-            stack, wavelength, kx=0.0, polarization=Polarization.TE,
+            stack,
+            wavelength,
+            kx=0.0,
+            polarization=Polarization.TE,
             absorption=True,
         )
         A = [_scalar(a) for a in result.layer_absorption]
@@ -261,7 +305,10 @@ class TestAbsorptionAttribution:
         k0 = 2 * nd.pi / wavelength
         kx = float(k0 * nd.sin(nd.array(35.0 * nd.pi / 180)))
         result = stratix.solve(
-            stack, wavelength, kx=kx, polarization=Polarization.TM,
+            stack,
+            wavelength,
+            kx=kx,
+            polarization=Polarization.TM,
             absorption=True,
         )
         A = [_scalar(a) for a in result.layer_absorption]
@@ -285,7 +332,11 @@ class TestAbsorptionAttribution:
             ],
         )
         result = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE, absorption=True,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
+            absorption=True,
         )
         A = [_scalar(a) for a in result.layer_absorption]
         total = 1.0 - float(result.R[0, 0]) - float(result.T[0, 0])
@@ -307,7 +358,11 @@ class TestAbsorptionAttribution:
         stack, wavelength = _absorber_then_bragg(n_pairs=8)
         for pol in (Polarization.TE, Polarization.TM):
             result = stratix.solve(
-                stack, wavelength, kx=3e6, polarization=pol, absorption=True,
+                stack,
+                wavelength,
+                kx=3e6,
+                polarization=pol,
+                absorption=True,
             )
             assert abs(_scalar(result.energy_balance) - 1.0) < 1e-10
 
@@ -338,7 +393,10 @@ class TestAbsorptionAttribution:
             ],
         )
         result = stratix.solve(
-            stack, wavelength, kx=0.0, polarization=Polarization.TE,
+            stack,
+            wavelength,
+            kx=0.0,
+            polarization=Polarization.TE,
             absorption=True,
         )
 
@@ -391,7 +449,10 @@ class TestAbsorptionAttribution:
             layers=layers,
         )
         result = stratix.solve(
-            stack, wavelength, kx=0.0, polarization=Polarization.TE,
+            stack,
+            wavelength,
+            kx=0.0,
+            polarization=Polarization.TE,
             absorption=True,
         )
         assert abs(_scalar(result.energy_balance) - 1.0) < 1e-10
@@ -418,7 +479,10 @@ class TestAbsorptionSweeps:
         stack = _lossy_bilayer()
         wavelengths = nd.array([4e-7, 5e-7, 6e-7, 7e-7])
         result = stratix.solve(
-            stack, wavelengths, kx=0.0, polarization=Polarization.TE,
+            stack,
+            wavelengths,
+            kx=0.0,
+            polarization=Polarization.TE,
             absorption=True,
         )
 
@@ -432,24 +496,38 @@ class TestAbsorptionSweeps:
         stack = _lossy_bilayer()
         wl_list = [4e-7, 5e-7, 6e-7]
         swept = stratix.solve(
-            stack, nd.array(wl_list), kx=0.0, polarization=Polarization.TE,
+            stack,
+            nd.array(wl_list),
+            kx=0.0,
+            polarization=Polarization.TE,
             absorption=True,
         )
         for i, wl in enumerate(wl_list):
             single = stratix.solve(
-                stack, wl, kx=0.0, polarization=Polarization.TE, absorption=True,
+                stack,
+                wl,
+                kx=0.0,
+                polarization=Polarization.TE,
+                absorption=True,
             )
             for layer in range(2):
-                assert abs(
-                    float(swept.layer_absorption[layer, i, 0])
-                    - float(single.layer_absorption[layer, 0, 0])
-                ) < 1e-12
+                assert (
+                    abs(
+                        float(swept.layer_absorption[layer, i, 0])
+                        - float(single.layer_absorption[layer, 0, 0])
+                    )
+                    < 1e-12
+                )
 
     def test_kx_array(self, set_backend):
         stack = _lossy_bilayer()
         kx = nd.array([0.0, 2e6, 5e6])
         result = stratix.solve(
-            stack, 5e-7, kx=kx, polarization=Polarization.TE, absorption=True,
+            stack,
+            5e-7,
+            kx=kx,
+            polarization=Polarization.TE,
+            absorption=True,
         )
         assert result.layer_absorption.shape == (2, 1, 3)
         assert result.energy_balance.shape == (1, 3)
@@ -459,7 +537,10 @@ class TestAbsorptionSweeps:
         wavelengths = nd.array([4e-7, 5e-7, 6e-7])
         kx = nd.array([0.0, 2e6])
         result = stratix.solve(
-            stack, wavelengths, kx=kx, polarization=Polarization.TE,
+            stack,
+            wavelengths,
+            kx=kx,
+            polarization=Polarization.TE,
             absorption=True,
         )
         assert result.R.shape == (3, 2)
@@ -474,15 +555,17 @@ class TestAbsorptionSweeps:
         wavelengths = nd.array([4.5e-7, 6.5e-7])
         kx = nd.array([0.0, 3e6])
         result = stratix.solve(
-            stack, wavelengths, kx=kx, polarization=Polarization.TE,
+            stack,
+            wavelengths,
+            kx=kx,
+            polarization=Polarization.TE,
             absorption=True,
         )
         for i in range(2):
             for j in range(2):
                 total = 1.0 - float(result.R[i, j]) - float(result.T[i, j])
                 summed = sum(
-                    float(result.layer_absorption[layer, i, j])
-                    for layer in range(2)
+                    float(result.layer_absorption[layer, i, j]) for layer in range(2)
                 )
                 assert abs(summed - total) < 1e-12
 
@@ -493,7 +576,10 @@ class TestAbsorptionBoth:
     def test_scalar_shapes(self, set_backend):
         stack = _lossy_bilayer()
         result = stratix.solve(
-            stack, 5e-7, kx=3e6, polarization=Polarization.BOTH,
+            stack,
+            5e-7,
+            kx=3e6,
+            polarization=Polarization.BOTH,
             absorption=True,
         )
         assert result.layer_absorption.shape == (2, 2, 1, 1)
@@ -503,7 +589,10 @@ class TestAbsorptionBoth:
         stack = _lossy_bilayer()
         wavelengths = nd.array([4e-7, 5e-7, 6e-7])
         result = stratix.solve(
-            stack, wavelengths, kx=3e6, polarization=Polarization.BOTH,
+            stack,
+            wavelengths,
+            kx=3e6,
+            polarization=Polarization.BOTH,
             absorption=True,
         )
         assert result.R.shape == (2, 3, 1)
@@ -514,33 +603,45 @@ class TestAbsorptionBoth:
         stack = _lossy_bilayer()
         wavelengths = nd.array([4e-7, 6e-7])
         both = stratix.solve(
-            stack, wavelengths, kx=3e6, polarization=Polarization.BOTH,
+            stack,
+            wavelengths,
+            kx=3e6,
+            polarization=Polarization.BOTH,
             absorption=True,
         )
         for axis, pol in enumerate((Polarization.TE, Polarization.TM)):
             single = stratix.solve(
-                stack, wavelengths, kx=3e6, polarization=pol, absorption=True,
+                stack,
+                wavelengths,
+                kx=3e6,
+                polarization=pol,
+                absorption=True,
             )
             for layer in range(2):
                 for i in range(2):
-                    assert abs(
-                        float(both.layer_absorption[axis, layer, i, 0])
-                        - float(single.layer_absorption[layer, i, 0])
-                    ) < 1e-12
+                    assert (
+                        abs(
+                            float(both.layer_absorption[axis, layer, i, 0])
+                            - float(single.layer_absorption[layer, i, 0])
+                        )
+                        < 1e-12
+                    )
 
     def test_tm_absorption_against_one_minus_r_minus_t(self, set_backend):
         stack = _lossy_bilayer()
         wavelengths = nd.array([4e-7, 5e-7, 6e-7])
         result = stratix.solve(
-            stack, wavelengths, kx=4e6, polarization=Polarization.BOTH,
+            stack,
+            wavelengths,
+            kx=4e6,
+            polarization=Polarization.BOTH,
             absorption=True,
         )
         tm = 1
         for i in range(3):
             total = 1.0 - float(result.R[tm, i, 0]) - float(result.T[tm, i, 0])
             summed = sum(
-                float(result.layer_absorption[tm, layer, i, 0])
-                for layer in range(2)
+                float(result.layer_absorption[tm, layer, i, 0]) for layer in range(2)
             )
             assert abs(summed - total) < 1e-12
 
@@ -559,8 +660,12 @@ class TestAbsorptionWithMethods:
             ],
         )
         result = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE,
-            method=Method.ADMITTANCE, absorption=True,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
+            method=Method.ADMITTANCE,
+            absorption=True,
         )
         assert result.energy_balance is not None
         assert abs(_scalar(result.energy_balance) - 1.0) < 1e-12
@@ -568,8 +673,12 @@ class TestAbsorptionWithMethods:
         # The lumped term is 1 - R - T by construction, so the balance alone
         # proves nothing; check it against the S-matrix per-layer total.
         reference = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE,
-            method=Method.SMATRIX, absorption=True,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
+            method=Method.SMATRIX,
+            absorption=True,
         )
         expected = sum(_scalar(a) for a in reference.layer_absorption)
         assert len(result.layer_absorption) == 1
@@ -587,15 +696,23 @@ class TestAbsorptionWithMethods:
             ],
         )
         result = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE,
-            method=Method.DTN, absorption=True,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
+            method=Method.DTN,
+            absorption=True,
         )
         assert result.energy_balance is not None
         assert abs(_scalar(result.energy_balance) - 1.0) < 1e-12
 
         reference = stratix.solve(
-            stack, 5e-7, kx=0.0, polarization=Polarization.TE,
-            method=Method.SMATRIX, absorption=True,
+            stack,
+            5e-7,
+            kx=0.0,
+            polarization=Polarization.TE,
+            method=Method.SMATRIX,
+            absorption=True,
         )
         expected = sum(_scalar(a) for a in reference.layer_absorption)
         assert len(result.layer_absorption) == 1

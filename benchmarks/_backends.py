@@ -57,8 +57,7 @@ def backend_scope(
     """
     if name not in nd.available_backends:
         raise ValueError(
-            f"Backend {name!r} is not installed. "
-            f"Available: {nd.available_backends}"
+            f"Backend {name!r} is not installed. Available: {nd.available_backends}"
         )
 
     old_backend = nd.get_backend()
