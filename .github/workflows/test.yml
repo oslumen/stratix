@@ -51,10 +51,13 @@ jobs:
         # disk.  --no-install-package skips installing those distributions
         # without touching the resolution, so every other pin stays exactly
         # as locked; the torch backend simply reports unavailable and its
-        # test parametrizations skip.
+        # test parametrizations skip.  The same flag skips the docs theme,
+        # whose ../../sphinx_theme_oslumen checkout does not exist here --
+        # that needs --frozen, since a non-frozen sync regenerates metadata
+        # for every path source, present or not.
         run: |
           SKIP=$(python3 -c "import tomllib; lock = tomllib.load(open('uv.lock', 'rb')); print(' '.join('--no-install-package ' + p['name'] for p in lock['package'] if p['name'] in ('torch', 'triton') or 'nvidia' in p['name'] or 'cuda' in p['name']))")
-          uv sync --extra dev $SKIP
+          uv sync --frozen --extra dev --no-install-package sphinx-theme-oslumen $SKIP
       - name: Lint
         run: uv run pre-commit run --all-files
       - name: Test
