@@ -58,10 +58,13 @@ jobs:
         run: |
           SKIP=$(python3 -c "import tomllib; lock = tomllib.load(open('uv.lock', 'rb')); print(' '.join('--no-install-package ' + p['name'] for p in lock['package'] if p['name'] in ('torch', 'triton') or 'nvidia' in p['name'] or 'cuda' in p['name']))")
           uv sync --frozen --extra dev --no-install-package sphinx-theme-oslumen $SKIP
+      # --no-sync: uv run would otherwise re-sync the project implicitly,
+      # without the install step's --frozen and skip flags, and fail on the
+      # absent docs-theme path again.  The env is already synced above.
       - name: Lint
-        run: uv run pre-commit run --all-files
+        run: uv run --no-sync pre-commit run --all-files
       - name: Test
-        run: uv run pytest --cov --cov-report=xml
+        run: uv run --no-sync pytest --cov --cov-report=xml
 
       - name: Upload coverage
         uses: codecov/codecov-action@v5
