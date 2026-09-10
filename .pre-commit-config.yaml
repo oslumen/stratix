@@ -45,6 +45,8 @@ repos:
     hooks:
       - id: pip-audit
         additional_dependencies:
-          # The hook audits its own virtualenv, pip included; keep pip at
-          # a version with no known advisories (PYSEC-2026-3721).
+          # The hook audits its own virtualenv, so the packaging tools the
+          # env is seeded with must themselves be advisory-free: pip
+          # (PYSEC-2026-3721) and setuptools (PYSEC-2026-3447).
           - pip>=26.2
+          - setuptools>=83.0.0
