@@ -15,14 +15,46 @@ jobs:
           - "3.12"
           - "3.13"
 
+    # stratix depends on its private oslumen siblings as editable path
+    # dependencies (pyproject [tool.uv.sources]): ../phokaia, which itself
+    # needs ../numdiff, and ../../sphinx_theme_oslumen for the docs extra.
+    # The checkouts below mirror that on-disk layout inside the workspace,
+    # so uv.lock's relative paths resolve on the runner exactly as they do
+    # locally.  They need OSLUMEN_PACKAGES_TOKEN: a fine-grained PAT with
+    # read-only Contents access to oslumen/{phokaia,numdiff}, stored as an
+    # Actions secret (and as a Dependabot secret so dependabot PRs can run).
+    defaults:
+      run:
+        working-directory: packages/stratix
+
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: packages/stratix
+      - uses: actions/checkout@v4
+        with:
+          repository: oslumen/phokaia
+          token: ${{ secrets.OSLUMEN_PACKAGES_TOKEN }}
+          path: packages/phokaia
+      - uses: actions/checkout@v4
+        with:
+          repository: oslumen/numdiff
+          token: ${{ secrets.OSLUMEN_PACKAGES_TOKEN }}
+          path: packages/numdiff
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: uv sync --all-extras
+      - name: Install dependencies (CPU only)
+        # The lock resolves phokaia -> numdiff[all-gpu], which pins torch
+        # and the CUDA wheel stack -- ~9 GB, more than a hosted runner's
+        # disk.  --no-install-package skips installing those distributions
+        # without touching the resolution, so every other pin stays exactly
+        # as locked; the torch backend simply reports unavailable and its
+        # test parametrizations skip.
+        run: |
+          SKIP=$(python3 -c "import tomllib; lock = tomllib.load(open('uv.lock', 'rb')); print(' '.join('--no-install-package ' + p['name'] for p in lock['package'] if p['name'] in ('torch', 'triton') or 'nvidia' in p['name'] or 'cuda' in p['name']))")
+          uv sync --extra dev $SKIP
       - name: Lint
         run: uv run pre-commit run --all-files
       - name: Test
@@ -31,7 +63,7 @@ jobs:
       - name: Upload coverage
         uses: codecov/codecov-action@v5
         with:
-          files: coverage.xml
+          files: packages/stratix/coverage.xml
           fail_ci_if_error: false
 
   security:
